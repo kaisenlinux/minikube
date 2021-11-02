@@ -1,0 +1,16 @@
+Source: minikube
+Section: admin
+Priority: optional
+Maintainer: Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>
+Build-Depends: debhelper-compat (= 13), bash-completion, dh-golang, golang-go (>= 1.17)
+Standards-Version: 4.6.0
+Homepage: https://minikube.sigs.k8s.io
+Vcs-Browser: https://gitlab.com/kaisenlinux/packages/minikube
+Vcs-Git: https://gitlab.com/kaisenlinux/packages/minikube.git
+XS-Go-Import-Path: github.com/kubernetes/minikube
+
+Package: minikube
+Architecture: amd64 arm64 armhl
+Depends: ${shlibs:Depends},
+	 ${misc:Depends},
+Description: Run Kubernetes locally

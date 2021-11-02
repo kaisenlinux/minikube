@@ -1,0 +1,2 @@
+out/minikube usr/bin/
+out/zsh-completion/_minikube usr/share/zsh/vendor-completions/

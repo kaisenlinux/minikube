@@ -1,0 +1,5 @@
+minikube (1.23.2-1kaisen) kaisen-packages; urgency=medium
+
+  * First packaging for Kaisen Linux
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Tue, 02 Nov 2021 15:52:04 +0100

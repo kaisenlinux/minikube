@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+
+export GOPATH=$(CURDIR)/obj-x86_64-linux-gnu
+export DEB_BUILD_OPTIONS=nocheck
+
+%:
+	dh $@ --buildsystem=golang --with=bash-completion
+
+override_dh_auto_build:
+	#Minikube compilation
+	make
+	#Create minikube bash completion
+	mkdir -p out/bash-completion
+	out/minikube completion bash > out/bash-completion/minikube
+	#Create minikube zsh completion
+	mkdir -p out/zsh-completion
+	out/minikube completion zsh > out/zsh-completion/_minikube
+
+override_dh_installchangelogs:
+	dh_installchangelogs -X CHANGELOG.md CONTRIBUTING.md README.md SECURITY.md
+
+override_dh_auto_install:
+	dh_auto_install -- --no-source
