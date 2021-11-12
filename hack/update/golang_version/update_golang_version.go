@@ -28,7 +28,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -101,7 +101,7 @@ var (
 				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
 			},
 		},
-		".github/workflows/pr_verified.yaml": {
+		".github/workflows/functional_verified.yml": {
 			Replace: map[string]string{
 				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
 			},
@@ -116,6 +116,11 @@ var (
 				// searching for 1.* so it does NOT match "KVM_GO_VERSION ?= $(GO_VERSION:.0=)" in the Makefile
 				`GO_VERSION \?= 1.*`:             `GO_VERSION ?= {{.StableVersion}}`,
 				`GO_K8S_VERSION_PREFIX \?= v1.*`: `GO_K8S_VERSION_PREFIX ?= {{.K8SVersion}}`,
+			},
+		},
+		"hack/jenkins/installers/check_install_golang.sh": {
+			Replace: map[string]string{
+				`VERSION_TO_INSTALL=.*`: `VERSION_TO_INSTALL={{.StableVersion}}`,
 			},
 		},
 	}
@@ -157,7 +162,7 @@ func goVersions() (stable, stableMM, k8sVersion string, err error) {
 	if err != nil {
 		return "", "", "", err
 	}
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", "", "", err
 	}
