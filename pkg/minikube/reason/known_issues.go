@@ -17,6 +17,8 @@ limitations under the License.
 package reason
 
 import (
+	"fmt"
+	"os"
 	"regexp"
 
 	"k8s.io/minikube/pkg/minikube/style"
@@ -306,6 +308,19 @@ var providerIssues = []match{
 			Issues:   []int{10362},
 		},
 		Regexp: re(`unexpected "=" in operand`),
+	},
+	{
+		Kind: Kind{
+			ID:       "PR_DOCKER_FILE_SHARING",
+			ExitCode: ExProviderError,
+			Advice: fmt.Sprintf(`There are a couple ways to enable the required file sharing:
+1. Enable "Use the WSL 2 based engine" in Docker Desktop
+or
+2. Enable file sharing in Docker Desktop for the %s%s directory`, os.Getenv("HOMEDRIVE"), os.Getenv("HOMEPATH")),
+			URL: "https://docs.docker.com/desktop/windows/#file-sharing",
+		},
+		GOOS:   []string{"windows"},
+		Regexp: re(`Post "http://ipc/filesharing/share": context deadline exceeded`),
 	},
 
 	// Hyperkit hypervisor
@@ -1037,6 +1052,15 @@ var guestIssues = []match{
 			Issues:   []int{11235},
 		},
 		Regexp: re(`'/var/lib/dpkg': No such file or directory`),
+	},
+	{
+		Kind: Kind{
+			ID:       "GUEST_STORAGE_DRIVER_BTRFS",
+			ExitCode: ExGuestUnsupported,
+			Advice:   "minikube does not support the BTRFS storage driver yet, there is a workaround, add the following flag to your start command `--feature-gates=\"LocalStorageCapacityIsolation=false\"`",
+			Issues:   []int{7923},
+		},
+		Regexp: re(`unsupported graph driver: btrfs`),
 	},
 	{
 		Kind: Kind{
