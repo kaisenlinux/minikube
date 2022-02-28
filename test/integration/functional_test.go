@@ -247,7 +247,9 @@ func tagAndLoadImage(ctx context.Context, t *testing.T, profile, taggedImage str
 }
 
 // runImageList is a helper function to run 'image ls' command test.
-func runImageList(ctx context.Context, t *testing.T, profile, testName, format string, expectedResult []string) {
+func runImageList(ctx context.Context, t *testing.T, profile, testName, format, expectedFormat string) {
+	expectedResult := expectedImageFormat(expectedFormat)
+
 	// docs: Make sure image listing works by `minikube image ls`
 	t.Run(testName, func(t *testing.T) {
 		MaybeParallel(t)
@@ -272,6 +274,13 @@ func runImageList(ctx context.Context, t *testing.T, profile, testName, format s
 	})
 }
 
+func expectedImageFormat(format string) []string {
+	return []string{
+		fmt.Sprintf(format, "k8s.gcr.io/pause"),
+		fmt.Sprintf(format, "k8s.gcr.io/kube-apiserver"),
+	}
+}
+
 // validateImageCommands runs tests on all the `minikube image` commands, ex. `minikube image load`, `minikube image list`, etc.
 func validateImageCommands(ctx context.Context, t *testing.T, profile string) {
 	// docs(skip): Skips on `none` driver as image loading is not supported
@@ -283,10 +292,10 @@ func validateImageCommands(ctx context.Context, t *testing.T, profile string) {
 		t.Skip("skipping on darwin github action runners, as this test requires a running docker daemon")
 	}
 
-	runImageList(ctx, t, profile, "ImageListShort", "short", []string{"k8s.gcr.io/pause", "docker.io/kubernetesui/dashboard"})
-	runImageList(ctx, t, profile, "ImageListTable", "table", []string{"| k8s.gcr.io/pause", "| docker.io/kubernetesui/dashboard"})
-	runImageList(ctx, t, profile, "ImageListJson", "json", []string{"[\"k8s.gcr.io/pause", "[\"docker.io/kubernetesui/dashboard"})
-	runImageList(ctx, t, profile, "ImageListYaml", "yaml", []string{"- k8s.gcr.io/pause", "- docker.io/kubernetesui/dashboard"})
+	runImageList(ctx, t, profile, "ImageListShort", "short", "%s")
+	runImageList(ctx, t, profile, "ImageListTable", "table", "| %s")
+	runImageList(ctx, t, profile, "ImageListJson", "json", "[\"%s")
+	runImageList(ctx, t, profile, "ImageListYaml", "yaml", "- %s")
 
 	// docs: Make sure image building works by `minikube image build`
 	t.Run("ImageBuild", func(t *testing.T) {
@@ -755,7 +764,11 @@ func validateExtraConfig(ctx context.Context, t *testing.T, profile string) {
 
 	// docs: Make sure the specified `--extra-config` is correctly returned
 	expectedExtraOptions := "apiserver.enable-admission-plugins=NamespaceAutoProvision"
+	if !strings.Contains(afterCfg.Config.KubernetesConfig.ExtraOptions.String(), expectedExtraOptions) {
+		t.Errorf("expected ExtraOptions to contain %s but got %s", expectedExtraOptions, afterCfg.Config.KubernetesConfig.ExtraOptions.String())
+	}
 
+	expectedExtraOptions = "kubelet.housekeeping-interval=5m"
 	if !strings.Contains(afterCfg.Config.KubernetesConfig.ExtraOptions.String(), expectedExtraOptions) {
 		t.Errorf("expected ExtraOptions to contain %s but got %s", expectedExtraOptions, afterCfg.Config.KubernetesConfig.ExtraOptions.String())
 	}
@@ -947,8 +960,12 @@ func dashboardURL(b *bufio.Reader) (string, error) {
 
 // validateDryRun asserts that the dry-run mode quickly exits with the right code
 func validateDryRun(ctx context.Context, t *testing.T, profile string) {
-	// dry-run mode should always be able to finish quickly (<5s)
-	mctx, cancel := context.WithTimeout(ctx, Seconds(5))
+	// dry-run mode should always be able to finish quickly (<5s) expect Docker Windows
+	timeout := Seconds(5)
+	if runtime.GOOS == "windows" && DockerDriver() {
+		timeout = Seconds(10)
+	}
+	mctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// docs: Run `minikube start --dry-run --memory 250MB`
@@ -967,7 +984,7 @@ func validateDryRun(ctx context.Context, t *testing.T, profile string) {
 		}
 	}
 
-	dctx, cancel := context.WithTimeout(ctx, Seconds(5))
+	dctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	// docs: Run `minikube start --dry-run`
 	startArgs = append([]string{"start", "-p", profile, "--dry-run", "--alsologtostderr", "-v=1"}, StartArgs()...)
@@ -986,8 +1003,12 @@ func validateDryRun(ctx context.Context, t *testing.T, profile string) {
 
 // validateInternationalLanguage asserts that the language used can be changed with environment variables
 func validateInternationalLanguage(ctx context.Context, t *testing.T, profile string) {
-	// dry-run mode should always be able to finish quickly (<5s)
-	mctx, cancel := context.WithTimeout(ctx, Seconds(5))
+	// dry-run mode should always be able to finish quickly (<5s) except Docker Windows
+	timeout := Seconds(5)
+	if runtime.GOOS == "windows" && DockerDriver() {
+		timeout = Seconds(10)
+	}
+	mctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
 	// Too little memory!
@@ -1452,7 +1473,14 @@ func validateServiceCmd(ctx context.Context, t *testing.T, profile string) {
 		t.Errorf("expected stderr to be empty but got *%q* . args %q", rr.Stderr, rr.Command())
 	}
 
-	endpoint := strings.TrimSpace(rr.Stdout.String())
+	splits := strings.Split(rr.Stdout.String(), "|")
+	var endpoint string
+	// get the last endpoint in the output to test http to https
+	for _, v := range splits {
+		if strings.Contains(v, "http") {
+			endpoint = strings.TrimSpace(v)
+		}
+	}
 	t.Logf("found endpoint: %s", endpoint)
 
 	u, err := url.Parse(endpoint)

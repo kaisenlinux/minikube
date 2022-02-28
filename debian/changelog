@@ -1,3 +1,11 @@
+minikube (1.25.2-1kaisen) kaisen-packages; urgency=medium
+
+  * Import 1.25.2 version
+  * Remove bash-completion as required package to build minikube
+  * Upgrade packaging
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sun, 27 Feb 2022 17:26:37 +0100
+
 minikube (1.25.1-1kaisen) kaisen-packages; urgency=medium
 
   * Import 1.25.1 version
