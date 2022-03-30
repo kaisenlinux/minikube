@@ -1,3 +1,10 @@
+minikube (1.25.2-2kaisen) kaisen-packages; urgency=medium
+
+  * Add minikube logo
+  * Add docs
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Tue, 29 Mar 2022 23:34:28 +0100
+
 minikube (1.25.2-1kaisen) kaisen-packages; urgency=medium
 
   * Import 1.25.2 version
