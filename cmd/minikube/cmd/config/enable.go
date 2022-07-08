@@ -49,6 +49,9 @@ var addonsEnableCmd = &cobra.Command{
 		if addon == "ambassador" {
 			out.Styled(style.Warning, "The ambassador addon has stopped working as of v1.23.0, for more details visit: https://github.com/datawire/ambassador-operator/issues/73")
 		}
+		if addon == "olm" {
+			out.Styled(style.Warning, "The OLM addon has stopped working, for more details visit: https://github.com/operator-framework/operator-lifecycle-manager/issues/2534")
+		}
 		viper.Set(config.AddonImages, images)
 		viper.Set(config.AddonRegistries, registries)
 		err := addons.SetAndSave(ClusterFlagValue(), addon, "true")
@@ -63,6 +66,29 @@ var addonsEnableCmd = &cobra.Command{
 			out.Styled(style.Tip, `Some dashboard features require the metrics-server addon. To enable all features please run:
 
 	minikube{{.profileArg}} addons enable metrics-server	
+
+`, out.V{"profileArg": tipProfileArg})
+
+		}
+		if addon == "headlamp" {
+			out.Styled(style.Tip, `To access Headlamp, use the following command:
+minikube service headlamp -n headlamp
+
+`)
+			out.Styled(style.Tip, `To authenticate in Headlamp, fetch the Authentication Token using the following command:
+
+export SECRET=$(kubectl get secrets --namespace headlamp -o custom-columns=":metadata.name" | grep "headlamp-token")
+kubectl get secret $SECRET --namespace headlamp --template=\{\{.data.token\}\} | base64 --decode
+			
+`)
+
+			tipProfileArg := ""
+			if ClusterFlagValue() != constants.DefaultClusterName {
+				tipProfileArg = fmt.Sprintf(" -p %s", ClusterFlagValue())
+			}
+			out.Styled(style.Tip, `Headlamp can display more detailed information when metrics-server is installed. To install it, run:
+
+minikube{{.profileArg}} addons enable metrics-server	
 
 `, out.V{"profileArg": tipProfileArg})
 

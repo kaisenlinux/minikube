@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 /*
 Copyright 2020 The Kubernetes Authors All rights reserved.
@@ -23,9 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
-	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
@@ -181,11 +178,7 @@ func validateCopyFileWithMultiNode(ctx context.Context, t *testing.T, profile st
 		t.Errorf("failed to decode json from status: args %q: %v", rr.Command(), err)
 	}
 
-	tmpDir, err := ioutil.TempDir("", "mk_cp_test")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(tmpDir)
+	tmpDir := t.TempDir()
 
 	srcPath := cpTestLocalPath()
 	dstPath := cpTestMinikubePath()
@@ -451,7 +444,7 @@ func validateNameConflict(ctx context.Context, t *testing.T, profile string) {
 	}
 	curNodeNum := strings.Count(rr.Stdout.String(), profile)
 
-	// Start new profile. It's expected failture
+	// Start new profile. It's expected failure
 	profileName := fmt.Sprintf("%s-m0%d", profile, curNodeNum)
 	startArgs := append([]string{"start", "-p", profileName}, StartArgs()...)
 	rr, err = Run(t, exec.CommandContext(ctx, Target(), startArgs...))
@@ -467,7 +460,7 @@ func validateNameConflict(ctx context.Context, t *testing.T, profile string) {
 		t.Errorf("failed to start profile. args %q : %v", rr.Command(), err)
 	}
 
-	// Add a node to the current cluster. It's expected failture
+	// Add a node to the current cluster. It's expected failure
 	addArgs := []string{"node", "add", "-p", profile}
 	rr, err = Run(t, exec.CommandContext(ctx, Target(), addArgs...))
 	if err == nil {

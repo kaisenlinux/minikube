@@ -92,7 +92,7 @@ func (d *Driver) Create() error {
 	if networkName == "" {
 		networkName = d.NodeConfig.ClusterName
 	}
-	if gateway, err := oci.CreateNetwork(d.OCIBinary, networkName); err != nil {
+	if gateway, err := oci.CreateNetwork(d.OCIBinary, networkName, d.NodeConfig.Subnet); err != nil {
 		out.WarningT("Unable to create dedicated network, this might result in cluster IP change after restart: {{.error}}", out.V{"error": err})
 	} else if gateway != nil {
 		params.Network = networkName
@@ -260,11 +260,7 @@ func (d *Driver) prepareSSH() error {
 			icaclsCmdOut, icaclsCmdErr := icaclsCmd.CombinedOutput()
 
 			if icaclsCmdErr != nil {
-				return errors.Wrap(icaclsCmdErr, "unable to execute icacls to set permissions")
-			}
-
-			if !strings.Contains(string(icaclsCmdOut), "Successfully processed 1 files; Failed processing 0 files") {
-				klog.Errorf("icacls failed applying permissions - err - [%s], output - [%s]", icaclsCmdErr, strings.TrimSpace(string(icaclsCmdOut)))
+				return errors.Wrap(icaclsCmdErr, fmt.Sprintf("unable to execute icacls to set permissions: %s", icaclsCmdOut))
 			}
 		}
 	}
@@ -347,7 +343,7 @@ func (d *Driver) Kill() error {
 		klog.Warningf("couldn't shutdown the container, will continue with kill anyways: %v", err)
 	}
 
-	cr := command.NewExecRunner(false) // using exec runner for interacting with dameon.
+	cr := command.NewExecRunner(false) // using exec runner for interacting with daemon.
 	if _, err := cr.RunCmd(oci.PrefixCmd(exec.Command(d.NodeConfig.OCIBinary, "kill", d.MachineName))); err != nil {
 		return errors.Wrapf(err, "killing %q", d.MachineName)
 	}

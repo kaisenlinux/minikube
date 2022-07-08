@@ -44,7 +44,7 @@ const (
 	// PreloadVersion is the current version of the preloaded tarball
 	//
 	// NOTE: You may need to bump this version up when upgrading auxiliary docker images
-	PreloadVersion = "v17"
+	PreloadVersion = "v18"
 	// PreloadBucket is the name of the GCS bucket where preloaded volume tarballs exist
 	PreloadBucket = "minikube-preloaded-volume-tarballs"
 )
@@ -286,7 +286,7 @@ var ensureChecksumValid = func(k8sVersion, containerRuntime, targetPath string, 
 	return nil
 }
 
-// CleanUpOlderPreloads deletes preload files beloning to older minikube versions
+// CleanUpOlderPreloads deletes preload files belonging to older minikube versions
 // checks the current preload version and then if the saved tar file is belongs to older minikube it will delete it
 // in case of failure only logs to the user
 func CleanUpOlderPreloads() {

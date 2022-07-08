@@ -73,7 +73,7 @@ type testEntry struct {
 	duration    float32
 }
 
-// A map with keys of (environment, test_name) to values of slcies of TestEntry.
+// A map with keys of (environment, test_name) to values of slices of TestEntry.
 type splitEntryMap map[string]map[string][]testEntry
 
 // Reads CSV `file` and consumes each line to be a single TestEntry.
@@ -105,7 +105,7 @@ func readData(file io.Reader) []testEntry {
 			}
 		}
 		if len(fields) != 9 {
-			fmt.Printf("Found line with wrong number of columns. Expectd 9, but got %d - skipping\n", len(fields))
+			fmt.Printf("Found line with wrong number of columns. Expected 9, but got %d - skipping\n", len(fields))
 			continue
 		}
 		previousLine = fields
@@ -168,6 +168,10 @@ func filterRecentEntries(splitEntries splitEntryMap, dateCutoff time.Time) split
 	filteredEntries := make(splitEntryMap)
 
 	for environment, environmentSplit := range splitEntries {
+		// Ignore kvm crio tests until they're back under control
+		if environment == "KVM_Linux_crio" {
+			continue
+		}
 		for test, testSplit := range environmentSplit {
 			for _, entry := range testSplit {
 				if !entry.date.Before(dateCutoff) {

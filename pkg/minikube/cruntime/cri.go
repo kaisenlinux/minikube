@@ -140,13 +140,14 @@ func listCRIContainers(cr CommandRunner, root string, o ListContainersOptions) (
 
 // pauseContainers pauses a list of containers
 func pauseCRIContainers(cr CommandRunner, root string, ids []string) error {
-	args := []string{"runc"}
+	baseArgs := []string{"runc"}
 	if root != "" {
-		args = append(args, "--root", root)
+		baseArgs = append(baseArgs, "--root", root)
 	}
-	args = append(args, "pause")
+	baseArgs = append(baseArgs, "pause")
 	for _, id := range ids {
-		args := append(args, id)
+		args := baseArgs
+		args = append(args, id)
 		if _, err := cr.RunCmd(exec.Command("sudo", args...)); err != nil {
 			return errors.Wrap(err, "runc")
 		}
@@ -326,7 +327,7 @@ func criContainerLogCmd(cr CommandRunner, id string, len int, follow bool) strin
 // addRepoTagToImageName makes sure the image name has a repo tag in it.
 // in crictl images list have the repo tag prepended to them
 // for example "kubernetesui/dashboard:v2.0.0 will show up as "docker.io/kubernetesui/dashboard:v2.0.0"
-// warning this is only meant for kuberentes images where we know the GCR addreses have .io in them
+// warning this is only meant for kubernetes images where we know the GCR addresses have .io in them
 // not mean to be used for public images
 func addRepoTagToImageName(imgName string) string {
 	if !strings.Contains(imgName, ".io/") {

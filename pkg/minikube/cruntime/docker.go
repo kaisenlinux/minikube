@@ -17,12 +17,14 @@ limitations under the License.
 package cruntime
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/blang/semver/v4"
@@ -31,6 +33,7 @@ import (
 	"k8s.io/klog/v2"
 	"k8s.io/minikube/pkg/minikube/assets"
 	"k8s.io/minikube/pkg/minikube/bootstrapper/images"
+	"k8s.io/minikube/pkg/minikube/cni"
 	"k8s.io/minikube/pkg/minikube/command"
 	"k8s.io/minikube/pkg/minikube/config"
 	"k8s.io/minikube/pkg/minikube/docker"
@@ -117,7 +120,6 @@ func (r *Docker) Enable(disOthers, forceSystemd, inUserNamespace bool) error {
 	if inUserNamespace {
 		return errors.New("inUserNamespace must not be true for docker")
 	}
-	containerdWasActive := r.Init.Active("containerd")
 
 	if disOthers {
 		if err := disableOthers(r, r.Runner); err != nil {
@@ -141,15 +143,9 @@ func (r *Docker) Enable(disOthers, forceSystemd, inUserNamespace bool) error {
 		if err := r.forceSystemd(); err != nil {
 			return err
 		}
-		return r.Init.Restart("docker")
 	}
 
-	if containerdWasActive && !dockerBoundToContainerd(r.Runner) {
-		// Make sure to use the internal containerd
-		return r.Init.Restart("docker")
-	}
-
-	if err := r.Init.Start("docker"); err != nil {
+	if err := r.Init.Restart("docker"); err != nil {
 		return err
 	}
 
@@ -664,4 +660,53 @@ func dockerBoundToContainerd(runner command.Runner) bool {
 // ImagesPreloaded returns true if all images have been preloaded
 func (r *Docker) ImagesPreloaded(images []string) bool {
 	return dockerImagesPreloaded(r.Runner, images)
+}
+
+const (
+	CNIBinDir   = "/opt/cni/bin"
+	CNIConfDir  = "/etc/cni/net.d"
+	CNICacheDir = "/var/lib/cni/cache"
+)
+
+func dockerConfigureNetworkPlugin(r Docker, cr CommandRunner, networkPlugin string) error {
+	if networkPlugin == "" {
+		// no-op plugin
+		return nil
+	}
+
+	args := ""
+	if networkPlugin == "cni" {
+		args += " --cni-bin-dir=" + CNIBinDir
+		args += " --cni-cache-dir=" + CNICacheDir
+		args += " --cni-conf-dir=" + cni.ConfDir
+		args += " --hairpin-mode=promiscuous-bridge"
+	}
+
+	opts := struct {
+		NetworkPlugin  string
+		ExtraArguments string
+	}{
+		NetworkPlugin:  networkPlugin,
+		ExtraArguments: args,
+	}
+
+	const CRIDockerServiceConfFile = "/etc/systemd/system/cri-docker.service.d/10-cni.conf"
+	var CRIDockerServiceConfTemplate = template.Must(template.New("criDockerServiceConfTemplate").Parse(`[Service]
+ExecStart=
+ExecStart=/usr/bin/cri-dockerd --container-runtime-endpoint fd:// --network-plugin={{.NetworkPlugin}}{{.ExtraArguments}}`))
+
+	b := bytes.Buffer{}
+	if err := CRIDockerServiceConfTemplate.Execute(&b, opts); err != nil {
+		return errors.Wrap(err, "failed to execute template")
+	}
+	criDockerService := b.Bytes()
+	c := exec.Command("sudo", "mkdir", "-p", path.Dir(CRIDockerServiceConfFile))
+	if _, err := cr.RunCmd(c); err != nil {
+		return errors.Wrapf(err, "failed to create directory")
+	}
+	svc := assets.NewMemoryAssetTarget(criDockerService, CRIDockerServiceConfFile, "0644")
+	if err := cr.Copy(svc); err != nil {
+		return errors.Wrap(err, "failed to copy template")
+	}
+	return r.Init.Restart("cri-docker")
 }

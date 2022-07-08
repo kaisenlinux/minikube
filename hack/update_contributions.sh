@@ -18,20 +18,9 @@ set -eu -o pipefail
 
 DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 
-install_pullsheet() {
-  pullsheet_workdir="$(mktemp -d)"
-  trap 'rm -rf -- ${pullsheet_workdir}' RETURN
-
-  # See https://stackoverflow.com/questions/56842385/using-go-get-to-download-binaries-without-adding-them-to-go-mod for this workaround
-  cd "${pullsheet_workdir}"
-  go mod init ps
-  GOBIN="$DIR" go get github.com/google/pullsheet
-  cd -
-}
-
 if ! [[ -x "${DIR}/pullsheet" ]]; then
   echo >&2 'Installing pullsheet'
-  install_pullsheet
+  go install github.com/google/pullsheet@latest
 fi
 
 git fetch --tags -f
@@ -81,7 +70,7 @@ while read -r tag_index tag_name tag_start tag_end; do
   echo "Generating leaderboard for" "$tag_name" "(from $tag_start to $tag_end)"
   # Print header for page.
   printf -- "---\ntitle: \"$tag_name - $tag_end\"\nlinkTitle: \"$tag_name - $tag_end\"\nweight: $tag_index\n---\n" > "$destination/$tag_name.html"
-  # Add pullsheet content (deleting the lines consisting of the command used to generate it).
-  $DIR/pullsheet leaderboard --token-path "$TMP_TOKEN" --repos kubernetes/minikube --since "$tag_start" --until "$tag_end" --logtostderr=false --stderrthreshold=2 \
-    | sed -r -e "/Command\-line/,/pullsheet/d" >> "$destination/$tag_name.html"
+  # Add pullsheet content
+  $DIR/pullsheet leaderboard --token-path "$TMP_TOKEN" --repos kubernetes/minikube --since "$tag_start" --until "$tag_end" --hide-command --logtostderr=false --stderrthreshold=2 \
+    >> "$destination/$tag_name.html"
 done <<< "$tags_with_range"

@@ -20,8 +20,8 @@ import (
 	"os"
 	"os/user"
 	"testing"
-	"time"
 
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"k8s.io/minikube/pkg/minikube/config"
 )
@@ -88,8 +88,11 @@ func TestAudit(t *testing.T) {
 	})
 
 	t.Run("shouldLog", func(t *testing.T) {
-		oldArgs := os.Args
-		defer func() { os.Args = oldArgs }()
+		oldCommandLine := pflag.CommandLine
+		defer func() {
+			pflag.CommandLine = oldCommandLine
+			pflag.Parse()
+		}()
 
 		tests := []struct {
 			args []string
@@ -122,19 +125,22 @@ func TestAudit(t *testing.T) {
 		}
 
 		for _, test := range tests {
-			os.Args = test.args
+			mockArgs(t, test.args)
 
 			got := shouldLog()
 
 			if got != test.want {
-				t.Errorf("os.Args = %q; shouldLog() = %t; want %t", os.Args, got, test.want)
+				t.Errorf("test.args = %q; shouldLog() = %t; want %t", test.args, got, test.want)
 			}
 		}
 	})
 
 	t.Run("isDeletePurge", func(t *testing.T) {
-		oldArgs := os.Args
-		defer func() { os.Args = oldArgs }()
+		oldCommandLine := pflag.CommandLine
+		defer func() {
+			pflag.CommandLine = oldCommandLine
+			pflag.Parse()
+		}()
 
 		tests := []struct {
 			args []string
@@ -159,22 +165,88 @@ func TestAudit(t *testing.T) {
 		}
 
 		for _, test := range tests {
-			os.Args = test.args
+			mockArgs(t, test.args)
 
 			got := isDeletePurge()
 
 			if got != test.want {
-				t.Errorf("os.Args = %q; isDeletePurge() = %t; want %t", os.Args, got, test.want)
+				t.Errorf("test.args = %q; isDeletePurge() = %t; want %t", test.args, got, test.want)
 			}
 		}
 	})
 
 	// Check if logging with limited args causes a panic
-	t.Run("Log", func(t *testing.T) {
+	t.Run("LogCommandStart", func(t *testing.T) {
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+		os.Args = []string{"minikube", "start"}
+
+		oldCommandLine := pflag.CommandLine
+		defer func() {
+			pflag.CommandLine = oldCommandLine
+			pflag.Parse()
+		}()
+		mockArgs(t, os.Args)
+		auditID, err := LogCommandStart()
+		if auditID == "" {
+			t.Fatal("audit ID should not be empty")
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	t.Run("LogCommandEnd", func(t *testing.T) {
 		oldArgs := os.Args
 		defer func() { os.Args = oldArgs }()
 		os.Args = []string{"minikube"}
 
-		Log(time.Now())
+		oldCommandLine := pflag.CommandLine
+		defer func() {
+			pflag.CommandLine = oldCommandLine
+			pflag.Parse()
+		}()
+		mockArgs(t, os.Args)
+		auditID, err := LogCommandStart()
+		if err != nil {
+			t.Fatal("start failed")
+		}
+		err = LogCommandEnd(auditID)
+
+		if err != nil {
+			t.Fatal(err)
+		}
 	})
+
+	t.Run("LogCommandEndNonExistingID", func(t *testing.T) {
+		oldArgs := os.Args
+		defer func() { os.Args = oldArgs }()
+		os.Args = []string{"minikube"}
+
+		oldCommandLine := pflag.CommandLine
+		defer func() {
+			pflag.CommandLine = oldCommandLine
+			pflag.Parse()
+		}()
+		mockArgs(t, os.Args)
+		err := LogCommandEnd("non-existing-id")
+		if err == nil {
+			t.Fatal("function LogCommandEnd should return an error when a non-existing id is passed in it as an argument")
+		}
+	})
+}
+
+func mockArgs(t *testing.T, args []string) {
+	if len(args) == 0 {
+		t.Fatalf("cannot pass an empty slice to mockArgs")
+	}
+	fs := pflag.NewFlagSet(args[0], pflag.ExitOnError)
+	fs.Bool("purge", false, "")
+	if err := fs.Parse(args[1:]); err != nil {
+		t.Fatal(err)
+	}
+	pflag.CommandLine = fs
+	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
+		t.Fatal(err)
+	}
 }

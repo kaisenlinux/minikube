@@ -60,6 +60,8 @@ var (
 	// unexpected errors from libmachine to the user.
 	machineLogErrorRe   = regexp.MustCompile(`VirtualizationException`)
 	machineLogWarningRe = regexp.MustCompile(`(?i)warning`)
+	// This regex is to filter out logs that contain environment variables which could contain sensitive information
+	machineLogEnvironmentRe = regexp.MustCompile(`&exec\.Cmd`)
 )
 
 func main() {
@@ -122,7 +124,9 @@ type machineLogBridge struct{}
 
 // Write passes machine driver logs to klog
 func (lb machineLogBridge) Write(b []byte) (n int, err error) {
-	if machineLogErrorRe.Match(b) {
+	if machineLogEnvironmentRe.Match(b) {
+		return len(b), nil
+	} else if machineLogErrorRe.Match(b) {
 		klog.Errorf("libmachine: %s", b)
 	} else if machineLogWarningRe.Match(b) {
 		klog.Warningf("libmachine: %s", b)
@@ -176,7 +180,7 @@ func logFileName(dir string, logIdx int64) string {
 
 // setFlags sets the flags
 func setFlags(parse bool) {
-	// parse flags beyond subcommand - get aroung go flag 'limitations':
+	// parse flags beyond subcommand - get around go flag 'limitations':
 	// "Flag parsing stops just before the first non-flag argument" (ref: https://pkg.go.dev/flag#hdr-Command_line_flag_syntax)
 	pflag.CommandLine.ParseErrorsWhitelist.UnknownFlags = true
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
@@ -225,7 +229,7 @@ func setFlags(parse bool) {
 
 // setLastStartFlags sets the log_file flag to lastStart.txt if start command and user doesn't specify log_file or log_dir flags.
 func setLastStartFlags() {
-	if len(os.Args) < 2 || os.Args[1] != "start" {
+	if pflag.Arg(0) != "start" {
 		return
 	}
 	if pflag.CommandLine.Changed("log_file") || pflag.CommandLine.Changed("log_dir") {
