@@ -1,3 +1,9 @@
+minikube (1.26.1-2kaisen) kaisen-packages; urgency=medium
+
+  * Add docker.io, virtualbox and podman as recommended packages
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sat, 10 Sep 2022 14:31:48 +0100
+
 minikube (1.26.1-1kaisen) kaisen-packages; urgency=medium
 
   * Import minikube 1.26.1

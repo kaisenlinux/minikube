@@ -13,4 +13,7 @@ Package: minikube
 Architecture: amd64 arm64 armhl
 Depends: ${shlibs:Depends},
 	 ${misc:Depends},
+Recommends: virtualbox,
+	    docker.io,
+	    podman,	    
 Description: Run Kubernetes locally

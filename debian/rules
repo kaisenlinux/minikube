@@ -16,6 +16,8 @@ override_dh_auto_build:
 	mkdir -p out/zsh-completion
 	out/minikube completion zsh > out/zsh-completion/_minikube
 
+override_dh_dwz:
+
 override_dh_installchangelogs:
 	dh_installchangelogs -X CHANGELOG.md CONTRIBUTING.md README.md SECURITY.md
 
