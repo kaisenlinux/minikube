@@ -18,7 +18,6 @@ package qemu2
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -38,9 +37,7 @@ import (
 	"k8s.io/minikube/pkg/minikube/registry"
 )
 
-const (
-	docURL = "https://minikube.sigs.k8s.io/docs/reference/drivers/qemu2/"
-)
+const docURL = "https://minikube.sigs.k8s.io/docs/reference/drivers/qemu/"
 
 func init() {
 	if err := registry.Register(registry.DriverDef{
@@ -87,7 +84,7 @@ func qemuFirmwarePath(customPath string) (string, error) {
 			return "", fmt.Errorf("unknown arch: %s", arch)
 		}
 
-		v, err := ioutil.ReadDir(p)
+		v, err := os.ReadDir(p)
 		if err != nil {
 			return "", fmt.Errorf("lookup qemu: %v", err)
 		}
@@ -192,8 +189,7 @@ func status() registry.State {
 		return registry.State{Error: err, Doc: docURL}
 	}
 
-	_, err = exec.LookPath(qemuSystem)
-	if err != nil {
+	if _, err := exec.LookPath(qemuSystem); err != nil {
 		return registry.State{Error: err, Fix: "Install qemu-system", Doc: docURL}
 	}
 

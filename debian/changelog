@@ -1,3 +1,9 @@
+minikube (1.27.0-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.27.0 version
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Mon, 19 Sep 2022 16:29:41 +0100
+
 minikube (1.26.1-2kaisen) kaisen-packages; urgency=medium
 
   * Add docker.io, virtualbox and podman as recommended packages
