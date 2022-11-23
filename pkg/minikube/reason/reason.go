@@ -392,6 +392,8 @@ var (
 	InetCacheKubectl = Kind{ID: "INET_CACHE_KUBECTL", ExitCode: ExInternetError}
 	// minikube failed to cache required images to tar files
 	InetCacheTar = Kind{ID: "INET_CACHE_TAR", ExitCode: ExInternetError}
+	// minikube failed to download licenses
+	InetLicenses = Kind{ID: "INET_LICENSES", ExitCode: ExInternetError}
 	// minikube was unable to access main repository and mirrors for images
 	InetRepo = Kind{ID: "INET_REPO", ExitCode: ExInternetError}
 	// minikube was unable to access any known image repositories
@@ -480,5 +482,19 @@ var (
 
 		https://docs.docker.com/engine/install/`),
 		Style: style.Docker,
+	}
+	NotFoundSocketVMNet = Kind{
+		ID:       "NOT_FOUND_SOCKET_VMNET",
+		ExitCode: ExProgramNotFound,
+		Advice: translate.T(`socket_vmnet was not found on the system, resolve by:
+
+		Option 1) Installing socket_vmnet:
+
+		  https://minikube.sigs.k8s.io/docs/drivers/qemu/#networking
+
+		Option 2) Using the user network:
+
+		  minikube start{{.profile}} --driver qemu --network user`),
+		Style: style.SeeNoEvil,
 	}
 )

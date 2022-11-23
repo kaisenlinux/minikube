@@ -404,7 +404,7 @@ Alternatively, you can try upgrading to the latest hyperkit version, or using an
 		Kind: Kind{
 			ID:       "PR_HYPERV_MODULE_NOT_INSTALLED",
 			ExitCode: ExProviderNotFound,
-			Advice:   "Run: 'Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Tools -All'",
+			Advice:   "Run: 'Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V-Tools-All -All'",
 			Issues:   []int{9040},
 			URL:      "https://www.altaro.com/hyper-v/install-hyper-v-powershell-module/",
 		},
@@ -1265,7 +1265,7 @@ var serviceIssues = []match{
 		Kind: Kind{
 			ID:       "SVC_OPEN_NOT_FOUND",
 			ExitCode: ExSvcNotFound,
-			Advice:   "Use 'kubect get po -A' to find the correct and namespace name",
+			Advice:   "Use 'kubectl get po -A' to find the correct and namespace name",
 			Issues:   []int{5836},
 		},
 		Regexp: re(`Error opening service.*not found`),

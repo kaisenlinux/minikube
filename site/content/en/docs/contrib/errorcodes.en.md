@@ -367,6 +367,9 @@ minikube failed to cache the kubectl binary
 "INET_CACHE_TAR" (Exit code ExInternetError)  
 minikube failed to cache required images to tar files  
 
+"INET_LICENSES" (Exit code ExInternetError)  
+minikube failed to download licenses  
+
 "INET_REPO" (Exit code ExInternetError)  
 minikube was unable to access main repository and mirrors for images  
 
@@ -439,6 +442,8 @@ minikube was unable to safely downgrade installed Kubernetes version
 "NOT_FOUND_CRI_DOCKERD" (Exit code ExProgramNotFound)  
 
 "NOT_FOUND_DOCKERD" (Exit code ExProgramNotFound)  
+
+"NOT_FOUND_SOCKET_VMNET" (Exit code ExProgramNotFound)  
 
 ## Error Codes
 
