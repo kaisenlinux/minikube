@@ -13,8 +13,14 @@ Package: minikube
 Architecture: amd64 arm64 armhl
 Depends: ${shlibs:Depends},
 	 ${misc:Depends},
-	 golang-go (>= 1.19)
-Recommends: virtualbox,
-	    docker.io,
-	    podman,	    
+	 golang-go (>= 1.19),
+	 virtualbox,
+	 docker.io,
+	 podman,
+	 qemu-system-x86,
+	 qemu-system,
+	 qemu-utils,
+	 libvirt-clients,
+	 libvirt-daemon-system,
+	 virtinst,
 Description: Run Kubernetes locally

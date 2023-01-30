@@ -1,3 +1,20 @@
+minikube (1.29.0-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.29.0 version
+  * Add the following dependancies:
+    - virtualbox
+    - docker.io
+    - podman
+    - qemu-system-x86
+    - qemu-system
+    - qemu-utils
+    - libvirt-clients
+    - libvirt-daemon-system
+    - virtinst
+  * Many improvements of the packaging
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Tue, 31 Jan 2023 00:14:39 +0100
+
 minikube (1.28.0-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.28.0 version

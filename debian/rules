@@ -1,7 +1,6 @@
 #!/usr/bin/make -f
 
 export GOPATH=$(CURDIR)/_build
-export DEB_BUILD_OPTIONS=nocheck
 
 %:
 	dh $@ --buildsystem=golang --with=bash-completion
@@ -10,22 +9,24 @@ override_dh_auto_clean:
 	rm -rf $(CURDIR)/_build
 
 override_dh_auto_build:
-	#Minikube compilation
 	make
-	#Create minikube bash completion
-	mkdir -p out/bash-completion
-	out/minikube completion bash > out/bash-completion/minikube
-	#Create minikube zsh completion
-	mkdir -p out/zsh-completion
-	out/minikube completion zsh > out/zsh-completion/_minikube
+
+override_dh_auto_test:
 
 override_dh_shlibdeps:
 	dh_shlibdeps --exclude $(CURDIR)/debian/minikube/usr/bin/minikube
 
 override_dh_dwz:
 
+override_dh_installdocs:
+	dh_installdocs --all $(CURDIR)/*.md $(CURDIR)/LICENSE $(CURDIR)/OWNERS $(CURDIR)/SECURITY_CONTACTS
+
 override_dh_installchangelogs:
 	dh_installchangelogs -X CHANGELOG.md CONTRIBUTING.md README.md SECURITY.md
 
 override_dh_auto_install:
 	dh_auto_install -- --no-source
+	$(CURDIR)/out/minikube completion bash > $(CURDIR)/debian/minikube/usr/share/bash-completion/completions/minikube
+	$(CURDIR)/out/minikube completion zsh > $(CURDIR)/debian/minikube/usr/share/zsh/vendor-completions/_minikube
+	install -p -m 0755 $(CURDIR)/out/minikube $(CURDIR)/debian/minikube/usr/bin/
+	install -p -m 0644 $(CURDIR)/debian/minikube.png $(CURDIR)/debian/minikube/usr/share/pixmaps/
