@@ -41,6 +41,10 @@ import (
 const docURL = "https://minikube.sigs.k8s.io/docs/reference/drivers/qemu/"
 
 func init() {
+	priority := registry.Default
+	if runtime.GOOS == "windows" {
+		priority = registry.Experimental
+	}
 	if err := registry.Register(registry.DriverDef{
 		Name:     driver.QEMU2,
 		Alias:    []string{driver.AliasQEMU},
@@ -48,7 +52,7 @@ func init() {
 		Config:   configure,
 		Status:   status,
 		Default:  true,
-		Priority: registry.Default,
+		Priority: priority,
 	}); err != nil {
 		panic(fmt.Sprintf("register failed: %v", err))
 	}
@@ -69,6 +73,9 @@ func qemuSystemProgram() (string, error) {
 func qemuFirmwarePath(customPath string) (string, error) {
 	if customPath != "" {
 		return customPath, nil
+	}
+	if runtime.GOOS == "windows" {
+		return "C:\\Program Files\\qemu\\share\\edk2-x86_64-code.fd", nil
 	}
 	arch := runtime.GOARCH
 	// For macOS, find the correct brew installation path for qemu firmware

@@ -80,9 +80,8 @@ var importantPods = []string{
 	"coredns",
 	"kube-scheduler",
 	"kube-proxy",
-	"kubernetes-dashboard",
-	"storage-provisioner",
 	"kube-controller-manager",
+	"kindnet",
 }
 
 // logRunner is the subset of CommandRunner used for logging
@@ -221,7 +220,7 @@ func OutputAudit(lines int) error {
 }
 
 // outputLastStart outputs the last start logs.
-func outputLastStart() error {
+func OutputLastStart() error {
 	out.Styled(style.Empty, "")
 	out.Styled(style.Empty, "==> Last Start <==")
 	fp := localpath.LastStartLog()
@@ -256,7 +255,7 @@ func OutputOffline(lines int, logOutput *os.File) {
 	if err := OutputAudit(lines); err != nil {
 		klog.Errorf("failed to output audit logs: %v", err)
 	}
-	if err := outputLastStart(); err != nil {
+	if err := OutputLastStart(); err != nil {
 		klog.Errorf("failed to output last start logs: %v", err)
 	}
 
@@ -267,9 +266,8 @@ func OutputOffline(lines int, logOutput *os.File) {
 func logCommands(r cruntime.Manager, bs bootstrapper.Bootstrapper, cfg config.ClusterConfig, length int, follow bool) map[string]string {
 	cmds := bs.LogCommands(cfg, bootstrapper.LogOptions{Lines: length, Follow: follow})
 	pods := importantPods
-	if assets.Addons["gcp-auth"].IsEnabled(&cfg) {
-		pods = append(pods, "gcp-auth")
-	}
+	addonPods := enabledAddonPods(cfg)
+	pods = append(pods, addonPods...)
 	for _, pod := range pods {
 		ids, err := r.ListContainers(cruntime.ListContainersOptions{Name: pod})
 		if err != nil {
@@ -290,4 +288,22 @@ func logCommands(r cruntime.Manager, bs bootstrapper.Bootstrapper, cfg config.Cl
 	cmds["container status"] = cruntime.ContainerStatusCommand()
 
 	return cmds
+}
+
+// enabledAddonPods returns the pod names for enabled addons
+// this does not currently include all addons, mostly just addons that we occasionally get users reporting issues with
+func enabledAddonPods(cfg config.ClusterConfig) []string {
+	addonPodMap := map[string]string{
+		"dashboard":           "kubernetes-dashboard",
+		"gcp-auth":            "gcp-auth",
+		"ingress":             "controller_ingress",
+		"storage-provisioner": "storage-provisioner",
+	}
+	addonsPods := []string{}
+	for addon, podName := range addonPodMap {
+		if assets.Addons[addon].IsEnabled(&cfg) {
+			addonsPods = append(addonsPods, podName)
+		}
+	}
+	return addonsPods
 }

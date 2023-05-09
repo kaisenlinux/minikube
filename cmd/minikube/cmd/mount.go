@@ -126,8 +126,8 @@ var mountCmd = &cobra.Command{
 		if co.CP.Host.Driver.DriverName() == driver.None {
 			exit.Message(reason.Usage, `'none' driver does not support 'minikube mount' command`)
 		}
-		if driver.IsQEMU(co.Config.Driver) && pkgnetwork.IsUser(co.Config.Network) {
-			msg := "minikube mount is not currently implemented with the user network on QEMU"
+		if driver.IsQEMU(co.Config.Driver) && pkgnetwork.IsBuiltinQEMU(co.Config.Network) {
+			msg := "minikube mount is not currently implemented with the builtin network on QEMU"
 			if runtime.GOOS == "darwin" {
 				msg += ", try starting minikube with '--network=socket_vmnet'"
 			}
@@ -193,7 +193,7 @@ var mountCmd = &cobra.Command{
 			bindIP = "127.0.0.1"
 		}
 		out.Step(style.Mounting, "Mounting host path {{.sourcePath}} into VM as {{.destinationPath}} ...", out.V{"sourcePath": hostPath, "destinationPath": vmPath})
-		out.Infof("Mount type:   {{.name}}", out.V{"type": cfg.Type})
+		out.Infof("Mount type:   {{.name}}", out.V{"name": cfg.Type})
 		out.Infof("User ID:      {{.userID}}", out.V{"userID": cfg.UID})
 		out.Infof("Group ID:     {{.groupID}}", out.V{"groupID": cfg.GID})
 		out.Infof("Version:      {{.version}}", out.V{"version": cfg.Version})

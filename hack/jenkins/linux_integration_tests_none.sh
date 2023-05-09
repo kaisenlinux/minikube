@@ -36,7 +36,7 @@ export KUBECONFIG="/root/.kube/config"
 
 if ! kubeadm &>/dev/null; then
   echo "WARNING: kubeadm is not installed. will try to install."
-  curl -LO "https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubeadm"
+  curl -LO "https://dl.k8s.io/release/$(curl -sSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubeadm"
   sudo install kubeadm /usr/local/bin/kubeadm
 fi
 # "none" driver specific cleanup from previous runs.
@@ -72,8 +72,9 @@ fi
 # cri-dockerd is required for Kubernetes 1.24 and higher for none driver
 if ! cri-dockerd --version &>/dev/null; then
   echo "WARNING: cri-dockerd is not installed. will try to install."
-  CRI_DOCKERD_VERSION="0de30fc57b659cf23b1212d6516e0cceab9c91d1"
-  CRI_DOCKERD_BASE_URL="https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_VERSION}"
+  CRI_DOCKERD_VERSION="v0.3.1"
+  CRI_DOCKERD_COMMIT="9a87d6ae274ecf0f23776920964d6484bd679282"
+  CRI_DOCKERD_BASE_URL="https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_COMMIT}"
   sudo curl -L "${CRI_DOCKERD_BASE_URL}/amd64/cri-dockerd" -o /usr/bin/cri-dockerd
   sudo curl -L "${CRI_DOCKERD_BASE_URL}/cri-docker.socket" -o /usr/lib/systemd/system/cri-docker.socket
   sudo curl -L "${CRI_DOCKERD_BASE_URL}/cri-docker.service" -o /usr/lib/systemd/system/cri-docker.service

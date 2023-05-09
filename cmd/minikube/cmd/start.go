@@ -147,7 +147,7 @@ func platform() string {
 }
 
 // runStart handles the executes the flow of "minikube start"
-func runStart(cmd *cobra.Command, args []string) {
+func runStart(cmd *cobra.Command, _ []string) {
 	register.SetEventLogPath(localpath.EventLog(ClusterFlagValue()))
 	ctx := context.Background()
 	out.SetJSON(outputFormat == "json")
@@ -250,11 +250,10 @@ func runStart(cmd *cobra.Command, args []string) {
 				starter, err = provisionWithDriver(cmd, ds, existing)
 				if err != nil {
 					continue
-				} else {
-					// Success!
-					success = true
-					break
 				}
+				// Success!
+				success = true
+				break
 			}
 			if !success {
 				exitGuestProvision(err)
@@ -262,7 +261,7 @@ func runStart(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	validateBuiltImageVersion(starter.Runner)
+	validateBuiltImageVersion(starter.Runner, ds.Name)
 
 	if existing != nil && driver.IsKIC(existing.Driver) {
 		if viper.GetBool(createMount) {
@@ -301,6 +300,7 @@ func provisionWithDriver(cmd *cobra.Command, ds registry.DriverState, existing *
 	}
 
 	virtualBoxMacOS13PlusWarning(driverName)
+	vmwareUnsupported(driverName)
 	validateFlags(cmd, driverName)
 	validateUser(driverName)
 	if driverName == oci.Docker {
@@ -375,22 +375,35 @@ func provisionWithDriver(cmd *cobra.Command, ds registry.DriverState, existing *
 }
 
 func virtualBoxMacOS13PlusWarning(driverName string) {
-	if driverName != "virtualbox" || !detect.MacOS13Plus() {
+	if !driver.IsVirtualBox(driverName) || !detect.MacOS13Plus() {
 		return
 	}
-	driver := "hyperkit"
+	suggestedDriver := driver.HyperKit
 	if runtime.GOARCH == "arm64" {
-		driver = "qemu"
+		suggestedDriver = driver.QEMU
 	}
 	out.WarningT(`Due to changes in macOS 13+ minikube doesn't currently support VirtualBox. You can use alternative drivers such as docker or {{.driver}}.
     https://minikube.sigs.k8s.io/docs/drivers/docker/
     https://minikube.sigs.k8s.io/docs/drivers/{{.driver}}/
 
     For more details on the issue see: https://github.com/kubernetes/minikube/issues/15274
-`, out.V{"driver": driver})
+`, out.V{"driver": suggestedDriver})
 }
 
-func validateBuiltImageVersion(r command.Runner) {
+func vmwareUnsupported(driverName string) {
+	if !driver.IsVMware(driverName) {
+		return
+	}
+	exit.Message(reason.DrvUnsupported, `Due to security improvements to minikube the VMware driver is currently not supported. Available workarounds are to use a different driver or downgrade minikube to v1.29.0.
+
+    We are accepting community contributions to fix this, for more details on the issue see: https://github.com/kubernetes/minikube/issues/16221
+`)
+}
+
+func validateBuiltImageVersion(r command.Runner, driverName string) {
+	if driver.IsNone(driverName) {
+		return
+	}
 	res, err := r.RunCmd(exec.Command("cat", "/version.json"))
 	if err != nil {
 		klog.Warningf("Unable to open version.json: %s", err)
@@ -1398,15 +1411,14 @@ func getContainerRuntime(old *config.ClusterConfig) string {
 	}
 
 	if paramRuntime == constants.DefaultContainerRuntime {
-		k8sVersion := getKubernetesVersion(old)
-		paramRuntime = defaultRuntime(k8sVersion)
+		paramRuntime = defaultRuntime()
 	}
 
 	return paramRuntime
 }
 
 // defaultRuntime returns the default container runtime
-func defaultRuntime(k8sVersion string) string {
+func defaultRuntime() string {
 	// minikube default
 	return constants.Docker
 }
@@ -1458,7 +1470,7 @@ func noLimitMemory(sysLimit, containerLimit int, drvName string) int {
 	}
 	// Recommend 1GB to handle OS/VM overhead
 	sysOverhead := 1024
-	if drvName == "virtualbox" {
+	if driver.IsVirtualBox(drvName) {
 		// VirtualBox fully allocates all requested memory on start, it doesn't dynamically allocate when needed like other drivers
 		// Because of this allow more system overhead to prevent out of memory issues
 		sysOverhead = 1536
@@ -1832,7 +1844,7 @@ func validateBareMetal(drvName string) {
 
 	// default container runtime varies, starting with Kubernetes 1.24 - assume that only the default container runtime has been tested
 	rtime := viper.GetString(containerRuntime)
-	if rtime != constants.DefaultContainerRuntime && rtime != defaultRuntime(getKubernetesVersion(nil)) {
+	if rtime != constants.DefaultContainerRuntime && rtime != defaultRuntime() {
 		out.WarningT("Using the '{{.runtime}}' runtime with the 'none' driver is an untested configuration!", out.V{"runtime": rtime})
 	}
 
@@ -1841,6 +1853,12 @@ func validateBareMetal(drvName string) {
 	if version.GTE(semver.MustParse("1.18.0-beta.1")) {
 		if _, err := exec.LookPath("conntrack"); err != nil {
 			exit.Message(reason.GuestMissingConntrack, "Sorry, Kubernetes {{.k8sVersion}} requires conntrack to be installed in root's path", out.V{"k8sVersion": version.String()})
+		}
+	}
+	// crictl is required starting with Kubernetes 1.24, for all runtimes since the removal of dockershim
+	if version.GTE(semver.MustParse("1.24.0-alpha.0")) {
+		if _, err := exec.LookPath("crictl"); err != nil {
+			exit.Message(reason.GuestMissingConntrack, "Sorry, Kubernetes {{.k8sVersion}} requires crictl to be installed in root's path", out.V{"k8sVersion": version.String()})
 		}
 	}
 }

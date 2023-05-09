@@ -110,6 +110,11 @@ var (
 				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
 			},
 		},
+		".github/workflows/update-cloud-spanner-emulator-version.yml": {
+			Replace: map[string]string{
+				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
+			},
+		},
 		".github/workflows/time-to-k8s-public-chart.yml": {
 			Replace: map[string]string{
 				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
@@ -121,6 +126,31 @@ var (
 			},
 		},
 		".github/workflows/update-gotestsum-version.yml": {
+			Replace: map[string]string{
+				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
+			},
+		},
+		".github/workflows/update-containerd-version.yml": {
+			Replace: map[string]string{
+				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
+			},
+		},
+		".github/workflows/update-buildkit-version.yml": {
+			Replace: map[string]string{
+				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
+			},
+		},
+		".github/workflows/update-cri-o-version.yml": {
+			Replace: map[string]string{
+				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
+			},
+		},
+		".github/workflows/update-metrics-server-version.yml": {
+			Replace: map[string]string{
+				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
+			},
+		},
+		".github/workflows/update-runc-version.yml": {
 			Replace: map[string]string{
 				`GO_VERSION: .*`: `GO_VERSION: '{{.StableVersion}}'`,
 			},
@@ -140,7 +170,8 @@ var (
 				// searching for 1.* so it does NOT match "KVM_GO_VERSION ?= $(GO_VERSION:.0=)" in the Makefile
 				`GO_VERSION \?= 1.*`:             `GO_VERSION ?= {{.StableVersion}}`,
 				`GO_K8S_VERSION_PREFIX \?= v1.*`: `GO_K8S_VERSION_PREFIX ?= {{.K8SVersion}}`,
-				`GO_VERSION=[0-9.]+`:             `GO_VERSION={{.StableVersion}}`,
+				// Below line commented out due to https://github.com/kubernetes/minikube/issues/15841
+				// `GO_VERSION=[0-9.]+`:             `GO_VERSION={{.StableVersion}}`,
 			},
 		},
 		"hack/jenkins/installers/check_install_golang.sh": {
@@ -148,7 +179,7 @@ var (
 				`VERSION_TO_INSTALL=.*`: `VERSION_TO_INSTALL={{.StableVersion}}`,
 			},
 		},
-		"hack/jenkins/common.ps1": {
+		"hack/jenkins/installers/check_install_golang.ps1": {
 			Replace: map[string]string{
 				`GoVersion = ".*"`: `GoVersion = "{{.StableVersion}}"`,
 			},
@@ -217,6 +248,15 @@ func goVersions() (stable, stableMM, k8sVersion string, err error) {
 }
 
 func updateGoHashFile(version string) error {
+	hashFilePath := "../../../deploy/iso/minikube-iso/go.hash"
+	b, err := os.ReadFile(hashFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to read hash file: %v", err)
+	}
+	if strings.Contains(string(b), version) {
+		klog.Infof("hash file already contains %q", version)
+		return nil
+	}
 	r, err := http.Get(fmt.Sprintf("https://dl.google.com/go/go%s.src.tar.gz.sha256", version))
 	if err != nil {
 		return fmt.Errorf("failed to download golang sha256 file: %v", err)
@@ -226,7 +266,7 @@ func updateGoHashFile(version string) error {
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %v", err)
 	}
-	f, err := os.OpenFile("../../../deploy/iso/minikube-iso/go.hash", os.O_APPEND|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(hashFilePath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open go.hash file: %v", err)
 	}

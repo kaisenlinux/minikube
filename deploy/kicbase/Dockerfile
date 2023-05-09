@@ -19,7 +19,7 @@
 
 
 # multi-stage docker build so we can build auto-pause for arm64
-FROM golang:1.19.5 as auto-pause
+FROM golang:1.20.2 as auto-pause
 WORKDIR /src
 # auto-pause depends on core minikube code so we need to pass the whole source code as the context
 # copy in the minimal amount of source code possible
@@ -37,13 +37,14 @@ RUN if [ "$PREBUILT_AUTO_PAUSE" != "true" ]; then cd ./cmd/auto-pause/ && go bui
 
 # start from ubuntu 20.04, this image is reasonably small as a starting point
 # for a kubernetes node image, it doesn't contain much we don't need
-FROM ubuntu:focal-20221019 as kicbase
+FROM ubuntu:focal-20230308 as kicbase
 
-ARG BUILDKIT_VERSION="v0.11.0"
+ARG BUILDKIT_VERSION="v0.11.4"
 ARG FUSE_OVERLAYFS_VERSION="v1.7.1"
 ARG CONTAINERD_FUSE_OVERLAYFS_VERSION="1.0.3"
 ARG CRIO_VERSION="1.24"
-ARG CRI_DOCKERD_VERSION="0de30fc57b659cf23b1212d6516e0cceab9c91d1"
+ARG CRI_DOCKERD_VERSION="v0.3.1"
+ARG CRI_DOCKERD_COMMIT="9a87d6ae274ecf0f23776920964d6484bd679282"
 ARG TARGETARCH
 
 # copy in static files (configs, scripts)
@@ -125,10 +126,10 @@ ARG COMMIT_SHA
 USER root
 
 # Install cri-dockerd from pre-compiled binaries stored in GCS, this is way faster than building from source in multi-arch
-RUN echo "Installing cri-dockerd" && \
-	curl -L "https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_VERSION}/${TARGETARCH}/cri-dockerd" -o /usr/bin/cri-dockerd && chmod +x /usr/bin/cri-dockerd && \
-	curl -L "https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_VERSION}/cri-docker.socket" -o /usr/lib/systemd/system/cri-docker.socket && \
-	curl -L "https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_VERSION}/cri-docker.service" -o /usr/lib/systemd/system/cri-docker.service
+RUN echo "Installing cri-dockerd ${CRI_DOCKERD_VERSION}" && \
+	curl -L "https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_COMMIT}/${TARGETARCH}/cri-dockerd" -o /usr/bin/cri-dockerd && chmod +x /usr/bin/cri-dockerd && \
+	curl -L "https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_COMMIT}/cri-docker.socket" -o /usr/lib/systemd/system/cri-docker.socket && \
+	curl -L "https://storage.googleapis.com/kicbase-artifacts/cri-dockerd/${CRI_DOCKERD_COMMIT}/cri-docker.service" -o /usr/lib/systemd/system/cri-docker.service
 
 # install system requirements from the regular distro repositories
 RUN clean-install \
@@ -227,10 +228,7 @@ RUN systemctl enable docker.service
 # making SSH work for docker container
 # based on https://github.com/rastasheep/ubuntu-sshd/blob/master/18.04/Dockerfile
 RUN mkdir /var/run/sshd
-RUN echo 'root:root' |chpasswd
-RUN sed -ri 's/^#?PermitRootLogin\s+.*/PermitRootLogin yes/' /etc/ssh/sshd_config
 RUN sed -ri 's/UsePAM yes/#UsePAM yes/g' /etc/ssh/sshd_config
-
 # minikube relies on /etc/hosts for control-plane discovery. This prevents nefarious DNS servers from breaking it.
 RUN sed -ri 's/dns files/files dns/g' /etc/nsswitch.conf
 

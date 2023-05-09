@@ -286,6 +286,8 @@ var (
 	}
 	// minikube failed to bind container ports to host ports
 	DrvPortForward = Kind{ID: "DRV_PORT_FORWARD", ExitCode: ExDriverError}
+	// the driver is currently not supported by minikube
+	DrvUnsupported = Kind{ID: "DRV_UNSUPPORTED", ExitCode: ExDriverUnsupported}
 	// the driver in use does not support multi-node clusters
 	DrvUnsupportedMulti = Kind{ID: "DRV_UNSUPPORTED_MULTINODE", ExitCode: ExDriverConflict}
 	// the specified driver is not supported on the host OS
@@ -376,6 +378,8 @@ var (
 	GuestDrvMismatch = Kind{ID: "GUEST_DRIVER_MISMATCH", ExitCode: ExGuestConflict, Style: style.Conflict}
 	// minikube could not find conntrack on the host, which is required from Kubernetes 1.18 onwards
 	GuestMissingConntrack = Kind{ID: "GUEST_MISSING_CONNTRACK", ExitCode: ExGuestUnsupported}
+	// minikube could not find crictl on the host, which is required from Kubernetes 1.24 onwards
+	GuestMissingCrictl = Kind{ID: "GUEST_MISSING_CRICTL", ExitCode: ExGuestUnsupported}
 
 	// minikube failed to get the host IP to use from within the VM
 	IfHostIP = Kind{ID: "IF_HOST_IP", ExitCode: ExLocalNetworkError}
@@ -420,6 +424,8 @@ var (
 	SvcTunnelStart = Kind{ID: "SVC_TUNNEL_START", ExitCode: ExSvcError}
 	// minikube could not stop an active tunnel
 	SvcTunnelStop = Kind{ID: "SVC_TUNNEL_STOP", ExitCode: ExSvcError}
+	// another instance of tunnel already running
+	SvcTunnelAlreadyRunning = Kind{ID: "TUNNEL_ALREADY_RUNNING", ExitCode: ExSvcConflict, Style: style.Usage}
 	// minikube was unable to access the service url
 	SvcURLTimeout = Kind{ID: "SVC_URL_TIMEOUT", ExitCode: ExSvcTimeout}
 	// minikube couldn't find the specified service in the specified namespace
@@ -472,7 +478,7 @@ var (
 		
 		Please install cri-dockerd using these instructions:
 
-		https://github.com/Mirantis/cri-dockerd#build-and-install`),
+		https://github.com/Mirantis/cri-dockerd`),
 		Style: style.Docker,
 	}
 	NotFoundDockerd = Kind{

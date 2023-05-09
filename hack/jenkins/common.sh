@@ -80,6 +80,7 @@ if [ "$(uname)" = "Darwin" ]; then
   if [ "$ARCH" = "arm64" ]; then
     export PATH=$PATH:/opt/homebrew/bin
   fi
+
   if ! bash setup_docker_desktop_macos.sh; then
     retry_github_status "${COMMIT}" "${JOB_NAME}" "failure" "${access_token}" "${public_log_url}" "Jenkins: docker failed to start"
     exit 1
@@ -94,7 +95,7 @@ else
   ln -s /usr/local/bin/gtimeout /usr/local/bin/timeout || true
 fi
 
-# installing golang so we could do go get for gopogh
+# installing golang so we can go install gopogh
 ./installers/check_install_golang.sh "/usr/local" || true
 
 # install docker and kubectl if not present
@@ -428,8 +429,9 @@ if ! type "jq" > /dev/null; then
 fi
 
 echo ">> Installing gopogh"
-curl -LO "https://github.com/medyagh/gopogh/releases/download/v0.13.0/gopogh-${OS_ARCH}"
-sudo install "gopogh-${OS_ARCH}" /usr/local/bin/gopogh
+go install github.com/medyagh/gopogh/cmd/gopogh@v0.16.0
+# temporary: remove the old install of gopogh as it's taking priority over our current install, preventing updating
+sudo rm -f /usr/local/bin/gopogh
 
 
 echo ">> Running gopogh"
@@ -491,6 +493,7 @@ ${SUDO_PREFIX} rm -f "${KUBECONFIG}" || true
 ${SUDO_PREFIX} rm -f "${TEST_OUT}" || true
 ${SUDO_PREFIX} rm -f "${JSON_OUT}" || true
 ${SUDO_PREFIX} rm -f "${HTML_OUT}" || true
+${SUDO_PREFIX} rm -f "${SUMMARY_OUT}" || true
 
 rmdir "${TEST_HOME}" || true
 echo ">> ${TEST_HOME} completed at $(date)"

@@ -1,3 +1,9 @@
+minikube (1.30.1-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.30.1 version
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Tue, 09 May 2023 11:02:54 +0100
+
 minikube (1.29.0-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.29.0 version

@@ -232,8 +232,10 @@ func Start(starter Starter, apiServer bool) (*kubeconfig.Settings, error) {
 	if starter.ExistingAddons != nil {
 		klog.Infof("waiting for cluster config update ...")
 		if ea, ok := <-enabledAddons; ok {
-			addons.UpdateConfig(starter.Cfg, ea)
+			addons.UpdateConfigToEnable(starter.Cfg, ea)
 		}
+	} else {
+		addons.UpdateConfigToDisable(starter.Cfg)
 	}
 
 	// Write enabled addons to the config before completion
@@ -383,6 +385,7 @@ func configureRuntimes(runner cruntime.CommandRunner, cc config.ClusterConfig, k
 		Type:              cc.KubernetesConfig.ContainerRuntime,
 		Socket:            cc.KubernetesConfig.CRISocket,
 		Runner:            runner,
+		NetworkPlugin:     cc.KubernetesConfig.NetworkPlugin,
 		ImageRepository:   cc.KubernetesConfig.ImageRepository,
 		KubernetesVersion: kv,
 		InsecureRegistry:  cc.InsecureRegistry,
@@ -402,12 +405,7 @@ func configureRuntimes(runner cruntime.CommandRunner, cc config.ClusterConfig, k
 	// make sure container runtime is restarted afterwards for these changes to take effect
 	disableLoopback := co.Type == constants.CRIO
 	if err := cni.ConfigureLoopbackCNI(runner, disableLoopback); err != nil {
-		klog.Warningf("unable to name loopback interface in dockerConfigureNetworkPlugin: %v", err)
-	}
-	if kv.GTE(semver.MustParse("1.24.0-alpha.2")) {
-		if err := cruntime.ConfigureNetworkPlugin(cr, runner, cc.KubernetesConfig.NetworkPlugin); err != nil {
-			exit.Error(reason.RuntimeEnable, "Failed to configure network plugin", err)
-		}
+		klog.Warningf("unable to name loopback interface in configureRuntimes: %v", err)
 	}
 	// ensure all default CNI(s) are properly configured on each and every node (re)start
 	// make sure container runtime is restarted afterwards for these changes to take effect
@@ -643,12 +641,12 @@ func startMachine(cfg *config.ClusterConfig, node *config.Node, delOnFail bool) 
 		return runner, preExists, m, host, errors.Wrap(err, "Failed to get command runner")
 	}
 
-	ip, err := validateNetwork(host, runner, cfg.KubernetesConfig.ImageRepository, cfg.KubernetesConfig.KubernetesVersion)
+	ip, err := validateNetwork(host, runner, cfg.KubernetesConfig.ImageRepository)
 	if err != nil {
 		return runner, preExists, m, host, errors.Wrap(err, "Failed to validate network")
 	}
 
-	if driver.IsQEMU(host.Driver.DriverName()) && network.IsUser(cfg.Network) {
+	if driver.IsQEMU(host.Driver.DriverName()) && network.IsBuiltinQEMU(cfg.Network) {
 		apiServerPort, err := getPort()
 		if err != nil {
 			return runner, preExists, m, host, errors.Wrap(err, "Failed to find apiserver port")
@@ -726,7 +724,7 @@ func startHostInternal(api libmachine.API, cc *config.ClusterConfig, n *config.N
 }
 
 // validateNetwork tries to catch network problems as soon as possible
-func validateNetwork(h *host.Host, r command.Runner, imageRepository string, kubernetesVersion string) (string, error) {
+func validateNetwork(h *host.Host, r command.Runner, imageRepository string) (string, error) {
 	ip, err := h.Driver.GetIP()
 	if err != nil {
 		return ip, err
@@ -758,7 +756,7 @@ func validateNetwork(h *host.Host, r command.Runner, imageRepository string, kub
 	}
 
 	// Non-blocking
-	go tryRegistry(r, h.Driver.DriverName(), imageRepository, kubernetesVersion, ip)
+	go tryRegistry(r, h.Driver.DriverName(), imageRepository, ip)
 	return ip, nil
 }
 
@@ -814,7 +812,7 @@ func trySSH(h *host.Host, ip string) error {
 }
 
 // tryRegistry tries to connect to the image repository
-func tryRegistry(r command.Runner, driverName string, imageRepository string, kubernetesVersion string, ip string) {
+func tryRegistry(r command.Runner, driverName, imageRepository, ip string) {
 	// 2 second timeout. For best results, call tryRegistry in a non-blocking manner.
 	opts := []string{"-sS", "-m", "2"}
 
@@ -824,8 +822,7 @@ func tryRegistry(r command.Runner, driverName string, imageRepository string, ku
 	}
 
 	if imageRepository == "" {
-		v, _ := util.ParseKubernetesVersion(kubernetesVersion)
-		imageRepository = images.DefaultKubernetesRepo(v)
+		imageRepository = images.DefaultKubernetesRepo
 	}
 
 	opts = append(opts, fmt.Sprintf("https://%s/", imageRepository))
@@ -925,7 +922,7 @@ func addCoreDNSEntry(runner command.Runner, name, ip string, cc config.ClusterCo
 func warnVirtualBox() {
 	var altDriverList strings.Builder
 	for _, choice := range driver.Choices(true) {
-		if choice.Name != "virtualbox" && choice.Priority != registry.Discouraged && choice.State.Installed && choice.State.Healthy {
+		if !driver.IsVirtualBox(choice.Name) && choice.Priority != registry.Discouraged && choice.State.Installed && choice.State.Healthy {
 			altDriverList.WriteString(fmt.Sprintf("\n\t- %s", choice.Name))
 		}
 	}

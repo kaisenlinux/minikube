@@ -14,17 +14,16 @@
 
 # Bump these on release - and please check ISO_VERSION for correctness.
 VERSION_MAJOR ?= 1
-VERSION_MINOR ?= 29
-VERSION_BUILD ?= 0
+VERSION_MINOR ?= 30
+VERSION_BUILD ?= 1
 RAW_VERSION=$(VERSION_MAJOR).$(VERSION_MINOR).$(VERSION_BUILD)
-VERSION ?= $(MINIKUBE_VERSION)
 VERSION ?= v$(RAW_VERSION)
 
 KUBERNETES_VERSION ?= $(shell egrep "DefaultKubernetesVersion =" pkg/minikube/constants/constants.go | cut -d \" -f2)
 KIC_VERSION ?= $(shell egrep "Version =" pkg/drivers/kic/types.go | cut -d \" -f2)
 
 # Default to .0 for higher cache hit rates, as build increments typically don't require new ISO versions
-ISO_VERSION ?= v1.29.0
+ISO_VERSION ?= v1.30.1
 
 # Dashes are valid in semver, but not Linux packaging. Use ~ to delimit alpha/beta
 DEB_VERSION ?= $(subst -,~,$(RAW_VERSION))
@@ -35,9 +34,9 @@ RPM_REVISION ?= 0
 
 # used by hack/jenkins/release_build_and_upload.sh and KVM_BUILD_IMAGE, see also BUILD_IMAGE below
 # update this only by running `make update-golang-version`
-GO_VERSION ?= 1.19.5
+GO_VERSION ?= 1.20.2
 # update this only by running `make update-golang-version`
-GO_K8S_VERSION_PREFIX ?= v1.26.0
+GO_K8S_VERSION_PREFIX ?= v1.27.0
 
 # replace "x.y.0" => "x.y". kube-cross and go.dev/dl use different formats for x.y.0 go versions
 KVM_GO_VERSION ?= $(GO_VERSION:.0=)
@@ -46,7 +45,7 @@ KVM_GO_VERSION ?= $(GO_VERSION:.0=)
 INSTALL_SIZE ?= $(shell du out/minikube-windows-amd64.exe | cut -f1)
 BUILDROOT_BRANCH ?= 2021.02.12
 # the go version on the line below is for the ISO and does not need to be updated often
-GOLANG_OPTIONS = GO_VERSION=1.19.5 GO_HASH_FILE=$(PWD)/deploy/iso/minikube-iso/go.hash
+GOLANG_OPTIONS = GO_VERSION=1.19.6 GO_HASH_FILE=$(PWD)/deploy/iso/minikube-iso/go.hash
 BUILDROOT_OPTIONS = BR2_EXTERNAL=../../deploy/iso/minikube-iso $(GOLANG_OPTIONS)
 REGISTRY ?= gcr.io/k8s-minikube
 
@@ -55,8 +54,8 @@ COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT ?= $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
 COMMIT_SHORT = $(shell git rev-parse --short HEAD 2> /dev/null || true)
 COMMIT_NOQUOTES := $(patsubst "%",%,$(COMMIT))
-# source code for image: https://github.com/spowelljr/xcgo
-HYPERKIT_BUILD_IMAGE ?= gcr.io/k8s-minikube/xcgo:go1.17
+# source code for image: https://github.com/neilotoole/xcgo
+HYPERKIT_BUILD_IMAGE ?= gcr.io/k8s-minikube/xcgo:go1.19.5
 
 # NOTE: "latest" as of 2021-02-06. kube-cross images aren't updated as often as Kubernetes
 # https://github.com/kubernetes/kubernetes/blob/master/build/build-image/cross/VERSION
@@ -79,7 +78,7 @@ MINIKUBE_RELEASES_URL=https://github.com/kubernetes/minikube/releases/download
 KERNEL_VERSION ?= 5.10.57
 # latest from https://github.com/golangci/golangci-lint/releases
 # update this only by running `make update-golint-version`
-GOLINT_VERSION ?= v1.50.1
+GOLINT_VERSION ?= v1.52.2
 # Limit number of default jobs, to avoid the CI builds running out of memory
 GOLINT_JOBS ?= 4
 # see https://github.com/golangci/golangci-lint#memory-usage-of-golangci-lint
@@ -111,7 +110,7 @@ SHA512SUM=$(shell command -v sha512sum || echo "shasum -a 512")
 GVISOR_TAG ?= latest
 
 # auto-pause-hook tag to push changes to
-AUTOPAUSE_HOOK_TAG ?= v0.0.3
+AUTOPAUSE_HOOK_TAG ?= v0.0.4
 
 # prow-test tag to push changes to
 PROW_TEST_TAG ?= v0.0.3
@@ -714,13 +713,15 @@ KICBASE_IMAGE_HUB ?= kicbase/stable:$(KIC_VERSION)
 KICBASE_IMAGE_REGISTRIES ?= $(KICBASE_IMAGE_GCR) $(KICBASE_IMAGE_HUB)
 
 CRI_DOCKERD_VERSION ?= $(shell egrep "CRI_DOCKERD_VERSION=" deploy/kicbase/Dockerfile | cut -d \" -f2)
+CRI_DOCKERD_COMMIT ?= $(shell egrep "CRI_DOCKERD_COMMIT=" deploy/kicbase/Dockerfile | cut -d \" -f2)
 .PHONY: update-cri-dockerd
 update-cri-dockerd:
 	(cd hack/update/cri_dockerd_version && \
-	 go run update_cri_dockerd_version.go $(CRI_DOCKERD_VERSION) $(KICBASE_ARCH))
+	 go run update_cri_dockerd_version.go $(CRI_DOCKERD_VERSION) $(CRI_DOCKERD_COMMIT) $(KICBASE_ARCH))
 
 .PHONY: local-kicbase
 local-kicbase: ## Builds the kicbase image and tags it local/kicbase:latest and local/kicbase:$(KIC_VERSION)-$(COMMIT_SHORT)
+	touch deploy/kicbase/CHANGELOG
 	docker build -f ./deploy/kicbase/Dockerfile -t local/kicbase:$(KIC_VERSION) --build-arg VERSION_JSON=$(VERSION_JSON) --build-arg COMMIT_SHA=${VERSION}-$(COMMIT_NOQUOTES) --cache-from $(KICBASE_IMAGE_GCR) .
 	docker tag local/kicbase:$(KIC_VERSION) local/kicbase:latest
 	docker tag local/kicbase:$(KIC_VERSION) local/kicbase:$(KIC_VERSION)-$(COMMIT_SHORT)
@@ -1066,10 +1067,45 @@ update-docsy-version:
 	(cd hack/update/docsy_version && \
 	 go run update_docsy_version.go)
 
-.Phony: update-hugo-version
+.PHONY: update-hugo-version
 update-hugo-version:
 	(cd hack/update/hugo_version && \
 	 go run update_hugo_version.go)
+
+.PHONY: update-cloud-spanner-emulator-version
+update-cloud-spanner-emulator-version:
+	(cd hack/update/cloud_spanner_emulator_version && \
+	 go run update_cloud_spanner_emulator_version.go)
+
+.PHONY: update-containerd-version
+update-containerd-version:
+	(cd hack/update/containerd_version && \
+	 go run update_containerd_version.go)
+
+.PHONY: update-buildkit-version
+update-buildkit-version:
+	(cd hack/update/buildkit_version && \
+	 go run update_buildkit_version.go)
+
+.PHONY: update-cri-o-version
+update-cri-o-version:
+	(cd hack/update/cri-o_version && \
+	 go run update_cri-o_version.go)
+
+.PHONY: update-metrics-server-version
+update-metrics-server-version:
+	(cd hack/update/metrics_server_version && \
+	 go run update_metrics_server_version.go)
+
+.PHONY: update-runc-version
+update-runc-version:
+	(cd hack/update/runc_version && \
+	 go run update_runc_version.go)
+
+.PHONY: get-dependency-verison
+get-dependency-version:
+	@(cd hack/update/get_version && \
+	 go run get_version.go)
 
 .PHONY: generate-licenses
 generate-licenses:

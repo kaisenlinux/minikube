@@ -17,6 +17,7 @@ limitations under the License.
 package addons
 
 import (
+	"context"
 	"fmt"
 	"os/exec"
 	"path"
@@ -381,7 +382,7 @@ func supportLegacyIngress(addon *assets.Addon, cc config.ClusterConfig) error {
 				"KubeWebhookCertgenPatch":  "docker.io/jettech/kube-webhook-certgen:v1.5.1@sha256:950833e19ade18cd389d647efb88992a7cc077abedef343fa59e012d376d79b7",
 			}
 			addon.Registries = map[string]string{
-				"IngressController": "k8s.gcr.io",
+				"IngressController": "registry.k8s.io",
 			}
 			return nil
 		}
@@ -433,11 +434,17 @@ func enableOrDisableAddonInternal(cc *config.ClusterConfig, addon *assets.Addon,
 		}
 	}
 
+	// on the first attempt try without force, but on subsequent attempts use force
+	force := false
+
 	// Retry, because sometimes we race against an apiserver restart
 	apply := func() error {
-		_, err := runner.RunCmd(kubectlCommand(cc, deployFiles, enable))
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		_, err := runner.RunCmd(kubectlCommand(ctx, cc, deployFiles, enable, force))
 		if err != nil {
 			klog.Warningf("apply failed, will retry: %v", err)
+			force = true
 		}
 		return err
 	}
@@ -538,7 +545,7 @@ func ToEnable(cc *config.ClusterConfig, existing map[string]bool, additional []s
 	// Get the default values of any addons not saved to our config
 	for name, a := range assets.Addons {
 		if _, exists := existing[name]; !exists {
-			enable[name] = a.IsEnabled(cc)
+			enable[name] = a.IsEnabledOrDefault(cc)
 		}
 	}
 
@@ -563,9 +570,17 @@ func ToEnable(cc *config.ClusterConfig, existing map[string]bool, additional []s
 
 // UpdateConfig tries to update config with all enabled addons (not thread-safe).
 // Any error will be logged and it will continue.
-func UpdateConfig(cc *config.ClusterConfig, enabled []string) {
+func UpdateConfigToEnable(cc *config.ClusterConfig, enabled []string) {
 	for _, a := range enabled {
 		if err := Set(cc, a, "true"); err != nil {
+			klog.Errorf("store failed: %v", err)
+		}
+	}
+}
+
+func UpdateConfigToDisable(cc *config.ClusterConfig) {
+	for name := range assets.Addons {
+		if err := Set(cc, name, "false"); err != nil {
 			klog.Errorf("store failed: %v", err)
 		}
 	}

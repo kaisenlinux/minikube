@@ -80,6 +80,16 @@ func (a *Addon) IsEnabled(cc *config.ClusterConfig) bool {
 		return status
 	}
 
+	return false
+}
+
+// IsEnabledOrDefault checks if an Addon is enabled for the given profile. If not found in profile it returns the default state
+func (a *Addon) IsEnabledOrDefault(cc *config.ClusterConfig) bool {
+	status, ok := cc.Addons[a.Name()]
+	if ok {
+		return status
+	}
+
 	// Return the default unconfigured state of the addon
 	return a.enabled
 }
@@ -121,7 +131,7 @@ var Addons = map[string]*Addon{
 
 		// GuestPersistentDir
 	}, false, "auto-pause", "Google", "", "", map[string]string{
-		"AutoPauseHook": "k8s-minikube/auto-pause-hook:v0.0.3@sha256:2ff12878e569802afa75baf65701ab913a88fe61a1cbb22fdc852b1345af2a5c",
+		"AutoPauseHook": "k8s-minikube/auto-pause-hook:v0.0.4@sha256:c1792e370216fcdfd8c4540a87e3fa867da204dd5521623796e2d28498a894ff",
 	}, map[string]string{
 		"AutoPauseHook": "gcr.io",
 	}),
@@ -236,8 +246,8 @@ var Addons = map[string]*Addon{
 		"Alpine":               "alpine:3.6@sha256:66790a2b79e1ea3e1dabac43990c54aca5d1ddf268d9a5a0285e4167c8b24475",
 		"Kibana":               "kibana/kibana:5.6.2@sha256:cd948a9bda4622f1437afc4a3e78be6c8c25fc62f40aa0376f3d690f2436568f",
 	}, map[string]string{
-		"Elasticsearch":        "k8s.gcr.io",
-		"FluentdElasticsearch": "k8s.gcr.io",
+		"Elasticsearch":        "registry.k8s.io",
+		"FluentdElasticsearch": "registry.k8s.io",
 		"Kibana":               "docker.elastic.co",
 		"Alpine":               "docker.io",
 	}),
@@ -248,12 +258,12 @@ var Addons = map[string]*Addon{
 			"ingress-deploy.yaml",
 			"0640"),
 	}, false, "ingress", "Kubernetes", "", "https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/", map[string]string{
-		// https://github.com/kubernetes/ingress-nginx/blob/63dbbdbb3a099417f411fbd1d684fa2a287c96cd/deploy/static/provider/kind/deploy.yaml#L458
-		"IngressController": "ingress-nginx/controller:v1.5.1@sha256:4ba73c697770664c1e00e9f968de14e08f606ff961c76e5d7033a4a9c593c629",
-		// https://github.com/kubernetes/ingress-nginx/blob/63dbbdbb3a099417f411fbd1d684fa2a287c96cd/deploy/static/provider/kind/deploy.yaml#L565
-		"KubeWebhookCertgenCreate": "ingress-nginx/kube-webhook-certgen:v20220916-gd32f8c343@sha256:39c5b2e3310dc4264d638ad28d9d1d96c4cbb2b2dcfb52368fe4e3c63f61e10f",
-		// https://github.com/kubernetes/ingress-nginx/blob/63dbbdbb3a099417f411fbd1d684fa2a287c96cd/deploy/static/provider/kind/deploy.yaml#L614
-		"KubeWebhookCertgenPatch": "ingress-nginx/kube-webhook-certgen:v20220916-gd32f8c343@sha256:39c5b2e3310dc4264d638ad28d9d1d96c4cbb2b2dcfb52368fe4e3c63f61e10f",
+		// https://github.com/kubernetes/ingress-nginx/blob/e94304d3f6b34a60123e951e2f9d88ad218a7bc1/deploy/static/provider/kind/deploy.yaml#L445
+		"IngressController": "ingress-nginx/controller:v1.7.0@sha256:7612338342a1e7b8090bef78f2a04fffcadd548ccaabe8a47bf7758ff549a5f7",
+		// https://github.com/kubernetes/ingress-nginx/blob/e94304d3f6b34a60123e951e2f9d88ad218a7bc1/deploy/static/provider/kind/deploy.yaml#L552
+		"KubeWebhookCertgenCreate": "ingress-nginx/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794@sha256:01d181618f270f2a96c04006f33b2699ad3ccb02da48d0f89b22abce084b292f",
+		// https://github.com/kubernetes/ingress-nginx/blob/e94304d3f6b34a60123e951e2f9d88ad218a7bc1/deploy/static/provider/kind/deploy.yaml#L601
+		"KubeWebhookCertgenPatch": "ingress-nginx/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794@sha256:01d181618f270f2a96c04006f33b2699ad3ccb02da48d0f89b22abce084b292f",
 	}, map[string]string{
 		"IngressController":        "registry.k8s.io",
 		"KubeWebhookCertgenCreate": "registry.k8s.io",
@@ -323,7 +333,7 @@ var Addons = map[string]*Addon{
 			"metrics-server-service.yaml",
 			"0640"),
 	}, false, "metrics-server", "Kubernetes", "", "", map[string]string{
-		"MetricsServer": "metrics-server/metrics-server:v0.6.2@sha256:f977ad859fb500c1302d9c3428c6271db031bb7431e7076213b676b345a88dc2",
+		"MetricsServer": "metrics-server/metrics-server:v0.6.3@sha256:c60778fa1c44d0c5a0c4530ebe83f9243ee6fc02f4c3dc59226c201931350b10",
 	}, map[string]string{
 		"MetricsServer": "registry.k8s.io",
 	}),
@@ -436,8 +446,8 @@ var Addons = map[string]*Addon{
 		"NvidiaDriverInstaller": "minikube-nvidia-driver-installer:e2d9b43228decf5d6f7dce3f0a85d390f138fa01",
 		"Pause":                 "pause:2.0@sha256:9ce5316f9752b8347484ab0f6778573af15524124d52b93230b9a0dcc987e73e",
 	}, map[string]string{
-		"NvidiaDriverInstaller": "k8s.gcr.io",
-		"Pause":                 "k8s.gcr.io",
+		"NvidiaDriverInstaller": "registry.k8s.io",
+		"Pause":                 "registry.k8s.io",
 	}),
 	"nvidia-gpu-device-plugin": NewAddon([]*BinAsset{
 		MustBinAsset(addons.NvidiaGpuDevicePluginAssets,
@@ -448,7 +458,7 @@ var Addons = map[string]*Addon{
 	}, false, "nvidia-gpu-device-plugin", "3rd party (Nvidia)", "", "https://minikube.sigs.k8s.io/docs/tutorials/nvidia_gpu/", map[string]string{
 		"NvidiaDevicePlugin": "nvidia-gpu-device-plugin@sha256:4b036e8844920336fa48f36edeb7d4398f426d6a934ba022848deed2edbf09aa",
 	}, map[string]string{
-		"NvidiaDevicePlugin": "k8s.gcr.io",
+		"NvidiaDevicePlugin": "registry.k8s.io",
 	}),
 	"logviewer": NewAddon([]*BinAsset{
 		MustBinAsset(addons.LogviewerAssets,
@@ -533,11 +543,11 @@ var Addons = map[string]*Addon{
 			"metallb-config.yaml",
 			"0640"),
 	}, false, "metallb", "3rd party (MetalLB)", "", "", map[string]string{
-		"Speaker":    "metallb/speaker:v0.9.6@sha256:c66585a805bed1a3b829d8fb4a4aab9d87233497244ebff96f1b88f1e7f8f991",
-		"Controller": "metallb/controller:v0.9.6@sha256:fbfdb9d3f55976b0ee38f3309d83a4ca703efcf15d6ca7889cd8189142286502",
+		"Speaker":    "metallb/speaker:v0.9.6@sha256:7a400205b4986acd3d2ff32c29929682b8ff8d830837aff74f787c757176fa9f",
+		"Controller": "metallb/controller:v0.9.6@sha256:6932cf255dd7f06f550c7f106b9a206be95f847ab8cb77aafac7acd27def0b00",
 	}, map[string]string{
-		"Speaker":    "docker.io",
-		"Controller": "docker.io",
+		"Speaker":    "quay.io",
+		"Controller": "quay.io",
 	}),
 	"ambassador": NewAddon([]*BinAsset{
 		MustBinAsset(addons.AmbassadorAssets,
@@ -577,11 +587,11 @@ var Addons = map[string]*Addon{
 			"gcp-auth-webhook.yaml",
 			"0640"),
 	}, false, "gcp-auth", "Google", "", "https://minikube.sigs.k8s.io/docs/handbook/addons/gcp-auth/", map[string]string{
-		"KubeWebhookCertgen": "ingress-nginx/kube-webhook-certgen:v1.0@sha256:f3b6b39a6062328c095337b4cadcefd1612348fdd5190b1dcbcb9b9e90bd8068",
-		"GCPAuthWebhook":     "k8s-minikube/gcp-auth-webhook:v0.0.13@sha256:08a49cb7a588d81723b7e02c16082c75418b6e0a54cf2e44668bd77f79a41a40",
+		"KubeWebhookCertgen": "ingress-nginx/kube-webhook-certgen:v20230312-helm-chart-4.5.2-28-g66a760794@sha256:01d181618f270f2a96c04006f33b2699ad3ccb02da48d0f89b22abce084b292f",
+		"GCPAuthWebhook":     "k8s-minikube/gcp-auth-webhook:v0.0.14@sha256:60fc3f336083dcd0a472caa51edfbf497d4df37115bb65e2d12739ed461db925",
 	}, map[string]string{
 		"GCPAuthWebhook":     "gcr.io",
-		"KubeWebhookCertgen": "k8s.gcr.io",
+		"KubeWebhookCertgen": "registry.k8s.io",
 	}),
 	"volumesnapshots": NewAddon([]*BinAsset{
 		// make sure the order of apply. `csi-hostpath-snapshotclass` must be the first position, because it depends on `snapshot.storage.k8s.io_volumesnapshotclasses`
@@ -617,9 +627,9 @@ var Addons = map[string]*Addon{
 			"volume-snapshot-controller-deployment.yaml",
 			"0640"),
 	}, false, "volumesnapshots", "Kubernetes", "", "https://minikube.sigs.k8s.io/docs/tutorials/volume_snapshots_and_csi/", map[string]string{
-		"SnapshotController": "sig-storage/snapshot-controller:v4.0.0@sha256:00fcc441ea9f72899c25eed61d602272a2a58c5f0014332bdcb5ac24acef08e4",
+		"SnapshotController": "sig-storage/snapshot-controller:v6.1.0@sha256:823c75d0c45d1427f6d850070956d9ca657140a7bbf828381541d1d808475280",
 	}, map[string]string{
-		"SnapshotController": "k8s.gcr.io",
+		"SnapshotController": "registry.k8s.io",
 	}),
 	"csi-hostpath-driver": NewAddon([]*BinAsset{
 		MustBinAsset(addons.CsiHostpathDriverAssets,
@@ -628,9 +638,9 @@ var Addons = map[string]*Addon{
 			"rbac-external-attacher.yaml",
 			"0640"),
 		MustBinAsset(addons.CsiHostpathDriverAssets,
-			"csi-hostpath-driver/rbac/rbac-external-health-monitor-agent.yaml.tmpl",
+			"csi-hostpath-driver/rbac/rbac-hostpath.yaml.tmpl",
 			vmpath.GuestAddonsDir,
-			"rbac-external-health-monitor-agent.yaml",
+			"rbac-hostpath.yaml",
 			"0640"),
 		MustBinAsset(addons.CsiHostpathDriverAssets,
 			"csi-hostpath-driver/rbac/rbac-external-health-monitor-controller.yaml.tmpl",
@@ -668,19 +678,9 @@ var Addons = map[string]*Addon{
 			"csi-hostpath-plugin.yaml",
 			"0640"),
 		MustBinAsset(addons.CsiHostpathDriverAssets,
-			"csi-hostpath-driver/deploy/csi-hostpath-provisioner.yaml.tmpl",
-			vmpath.GuestAddonsDir,
-			"csi-hostpath-provisioner.yaml",
-			"0640"),
-		MustBinAsset(addons.CsiHostpathDriverAssets,
 			"csi-hostpath-driver/deploy/csi-hostpath-resizer.yaml.tmpl",
 			vmpath.GuestAddonsDir,
 			"csi-hostpath-resizer.yaml",
-			"0640"),
-		MustBinAsset(addons.CsiHostpathDriverAssets,
-			"csi-hostpath-driver/deploy/csi-hostpath-snapshotter.yaml.tmpl",
-			vmpath.GuestAddonsDir,
-			"csi-hostpath-snapshotter.yaml",
 			"0640"),
 		MustBinAsset(addons.CsiHostpathDriverAssets,
 			"csi-hostpath-driver/deploy/csi-hostpath-storageclass.yaml.tmpl",
@@ -688,25 +688,23 @@ var Addons = map[string]*Addon{
 			"csi-hostpath-storageclass.yaml",
 			"0640"),
 	}, false, "csi-hostpath-driver", "Kubernetes", "", "https://minikube.sigs.k8s.io/docs/tutorials/volume_snapshots_and_csi/", map[string]string{
-		"Attacher":              "sig-storage/csi-attacher:v3.1.0@sha256:50c3cfd458fc8e0bf3c8c521eac39172009382fc66dc5044a330d137c6ed0b09",
-		"HostMonitorAgent":      "sig-storage/csi-external-health-monitor-agent:v0.2.0@sha256:c20d4a4772599e68944452edfcecc944a1df28c19e94b942d526ca25a522ea02",
-		"HostMonitorController": "sig-storage/csi-external-health-monitor-controller:v0.2.0@sha256:14988b598a180cc0282f3f4bc982371baf9a9c9b80878fb385f8ae8bd04ecf16",
-		"NodeDriverRegistrar":   "sig-storage/csi-node-driver-registrar:v2.0.1@sha256:e07f914c32f0505e4c470a62a40ee43f84cbf8dc46ff861f31b14457ccbad108",
-		"HostPathPlugin":        "sig-storage/hostpathplugin:v1.6.0@sha256:b526bd29630261eceecf2d38c84d4f340a424d57e1e2661111e2649a4663b659",
-		"LivenessProbe":         "sig-storage/livenessprobe:v2.2.0@sha256:48da0e4ed7238ad461ea05f68c25921783c37b315f21a5c5a2780157a6460994",
-		"Resizer":               "sig-storage/csi-resizer:v1.1.0@sha256:7a5ba58a44e0d749e0767e4e37315bcf6a61f33ce3185c1991848af4db0fb70a",
-		"Snapshotter":           "sig-storage/csi-snapshotter:v4.0.0@sha256:51f2dfde5bccac7854b3704689506aeecfb793328427b91115ba253a93e60782",
-		"Provisioner":           "sig-storage/csi-provisioner:v2.1.0@sha256:20c828075d1e36f679d6a91e905b0927141eef5e15be0c9a1ca4a6a0ed9313d2",
+		"Attacher":              "sig-storage/csi-attacher:v4.0.0@sha256:9a685020911e2725ad019dbce6e4a5ab93d51e3d4557f115e64343345e05781b",
+		"HostMonitorController": "sig-storage/csi-external-health-monitor-controller:v0.7.0@sha256:80b9ba94aa2afe24553d69bd165a6a51552d1582d68618ec00d3b804a7d9193c",
+		"NodeDriverRegistrar":   "sig-storage/csi-node-driver-registrar:v2.6.0@sha256:f1c25991bac2fbb7f5fcf91ed9438df31e30edee6bed5a780464238aa09ad24c",
+		"HostPathPlugin":        "sig-storage/hostpathplugin:v1.9.0@sha256:92257881c1d6493cf18299a24af42330f891166560047902b8d431fb66b01af5",
+		"LivenessProbe":         "sig-storage/livenessprobe:v2.8.0@sha256:cacee2b5c36dd59d4c7e8469c05c9e4ef53ecb2df9025fa8c10cdaf61bce62f0",
+		"Resizer":               "sig-storage/csi-resizer:v1.6.0@sha256:425d8f1b769398127767b06ed97ce62578a3179bcb99809ce93a1649e025ffe7",
+		"Snapshotter":           "sig-storage/csi-snapshotter:v6.1.0@sha256:291334908ddf71a4661fd7f6d9d97274de8a5378a2b6fdfeb2ce73414a34f82f",
+		"Provisioner":           "sig-storage/csi-provisioner:v3.3.0@sha256:ee3b525d5b89db99da3b8eb521d9cd90cb6e9ef0fbb651e98bb37be78d36b5b8",
 	}, map[string]string{
-		"Attacher":              "k8s.gcr.io",
-		"HostMonitorAgent":      "k8s.gcr.io",
-		"HostMonitorController": "k8s.gcr.io",
-		"NodeDriverRegistrar":   "k8s.gcr.io",
-		"HostPathPlugin":        "k8s.gcr.io",
-		"LivenessProbe":         "k8s.gcr.io",
-		"Resizer":               "k8s.gcr.io",
-		"Snapshotter":           "k8s.gcr.io",
-		"Provisioner":           "k8s.gcr.io",
+		"Attacher":              "registry.k8s.io",
+		"HostMonitorController": "registry.k8s.io",
+		"NodeDriverRegistrar":   "registry.k8s.io",
+		"HostPathPlugin":        "registry.k8s.io",
+		"LivenessProbe":         "registry.k8s.io",
+		"Resizer":               "registry.k8s.io",
+		"Snapshotter":           "registry.k8s.io",
+		"Provisioner":           "registry.k8s.io",
 	}),
 	"portainer": NewAddon([]*BinAsset{
 		MustBinAsset(addons.PortainerAssets,
@@ -736,9 +734,9 @@ var Addons = map[string]*Addon{
 		MustBinAsset(addons.HeadlampAssets, "headlamp/headlamp-deployment.yaml.tmpl", vmpath.GuestAddonsDir, "headlamp-deployment.yaml", "6040"),
 		MustBinAsset(addons.HeadlampAssets, "headlamp/headlamp-serviceaccount.yaml", vmpath.GuestAddonsDir, "headlamp-serviceaccount.yaml", "6040"),
 		MustBinAsset(addons.HeadlampAssets, "headlamp/headlamp-clusterrolebinding.yaml", vmpath.GuestAddonsDir, "headlamp-clusterrolebinding.yaml", "6040"),
-	}, false, "headlamp", "3rd party (kinvolk.io)", "", "https://minikube.sigs.k8s.io/docs/handbook/addons/headlamp/",
+	}, false, "headlamp", "3rd party (kinvolk.io)", "yolossn", "https://minikube.sigs.k8s.io/docs/handbook/addons/headlamp/",
 		map[string]string{
-			"Headlamp": "kinvolk/headlamp:v0.14.1@sha256:162f6888461362125f4f8c60cd0a9c4031a81de15f1ed4c67bd3600b48b24029",
+			"Headlamp": "headlamp-k8s/headlamp:v0.16.0@sha256:f6f50c4fea1520a465b9d75a399245e2aea727d64bcc533442b668757d11a947",
 		},
 		map[string]string{
 			"Headlamp": "ghcr.io",
@@ -746,7 +744,7 @@ var Addons = map[string]*Addon{
 	"cloud-spanner": NewAddon([]*BinAsset{
 		MustBinAsset(addons.CloudSpanner, "cloud-spanner/deployment.yaml", vmpath.GuestAddonsDir, "deployment.yaml", "6040"),
 	}, false, "cloud-spanner", "Google", "", "https://minikube.sigs.k8s.io/docs/handbook/addons/cloud-spanner/", map[string]string{
-		"CloudSpanner": "cloud-spanner-emulator/emulator:1.5.0@sha256:5974ad354138d5839e12ccb48e20fcdc76e073d686d9f4c889538a961f066d39",
+		"CloudSpanner": "cloud-spanner-emulator/emulator:1.5.2@sha256:a8dfda058bf21ed7eb50ff89bc333b99a739283942df892a15df58d089f0a3c9",
 	}, map[string]string{
 		"CloudSpanner": "gcr.io",
 	}),
@@ -817,10 +815,11 @@ func SelectAndPersistImages(addon *Addon, cc *config.ClusterConfig) (images, cus
 			}
 			if _, ok := addonDefaultImages[name]; !ok {
 				out.WarningT("Ignoring unknown custom image {{.name}}", out.V{"name": name})
+				delete(newImages, name)
 			}
 		}
 		// Use newly configured custom images.
-		images = overrideDefaults(addonDefaultImages, newImages)
+		images = overrideDefaults(images, newImages)
 		// Store custom addon images to be written.
 		cc.CustomAddonImages = mergeMaps(cc.CustomAddonImages, newImages)
 	}
@@ -829,19 +828,17 @@ func SelectAndPersistImages(addon *Addon, cc *config.ClusterConfig) (images, cus
 	customRegistries = filterKeySpace(addonDefaultImages, cc.CustomAddonRegistries) // filter by images map because registry map may omit default registry.
 	if viper.IsSet(config.AddonRegistries) {
 		// Parse the AddonRegistries flag if present.
-		customRegistries = parseMapString(viper.GetString(config.AddonRegistries))
-		for name := range customRegistries {
+		newRegistries := parseMapString(viper.GetString(config.AddonRegistries))
+		for name := range newRegistries {
 			if _, ok := addonDefaultImages[name]; !ok { // check images map because registry map may omitted default registry
 				out.WarningT("Ignoring unknown custom registry {{.name}}", out.V{"name": name})
-				delete(customRegistries, name)
+				delete(newRegistries, name)
 			}
 		}
-		// Since registry map may omit default registry, any previously set custom registries for these images must be cleared.
-		for name := range addonDefaultImages {
-			delete(cc.CustomAddonRegistries, name)
-		}
+		// Use newly configured custom registries.
+		customRegistries = mergeMaps(customRegistries, newRegistries)
 		// Merge newly set registries into custom addon registries to be written.
-		cc.CustomAddonRegistries = mergeMaps(cc.CustomAddonRegistries, customRegistries)
+		cc.CustomAddonRegistries = mergeMaps(cc.CustomAddonRegistries, newRegistries)
 	}
 
 	// If images or registries were specified, save the config afterward.
@@ -951,8 +948,8 @@ func GenerateTemplateData(addon *Addon, cc *config.ClusterConfig, netInfo Networ
 		// tl;dr If the user specified a custom image remove the default registry
 		// Without the line below, if you try to overwrite an image the default registry is still used in the templating
 		// Example - image name: MetricsScraper, default registry: docker.io, default image: kubernetesui/metrics-scraper
-		// Passed on addon enable: --images=MetricsScraper=k8s.gcr.io/echoserver:1.4
-		// Without this line the resulting image would be docker.io/k8s.gcr.io/echoserver:1.4
+		// Passed on addon enable: --images=MetricsScraper=registry.k8s.io/echoserver:1.4
+		// Without this line the resulting image would be docker.io/registry.k8s.io/echoserver:1.4
 		if _, ok := cc.CustomAddonImages[name]; ok {
 			opts.Registries[name] = ""
 		}
