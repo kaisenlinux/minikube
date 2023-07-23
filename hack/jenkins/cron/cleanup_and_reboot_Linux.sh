@@ -22,7 +22,7 @@ function check_jenkins() {
   fi
   pstree "${jenkins_pid}" \
         | egrep -i 'bash|integration|e2e|minikube' \
-        && echo "tests are is running on pid ${jenkins_pid} ..." \
+        && echo "tests are running on pid ${jenkins_pid} ..." \
         && exit 1
 }
 
@@ -124,4 +124,7 @@ systemctl list-unit-files --state=enabled \
         | xargs systemctl disable
 
 # update and reboot
-apt update -y && apt upgrade -y && apt-get autoclean && reboot
+check_jenkins
+apt update -y && apt upgrade -y && apt-get autoclean
+check_jenkins
+reboot

@@ -21,7 +21,7 @@ minikube runs the latest stable release of Kubernetes, with support for standard
 
 * [LoadBalancer](https://minikube.sigs.k8s.io/docs/handbook/accessing/#loadbalancer-access) - using `minikube tunnel`
 * Multi-cluster - using `minikube start -p <name>`
-* NodePorts - using `minikube service`
+* [NodePorts](https://minikube.sigs.k8s.io/docs/handbook/accessing/#nodeport-access) - using `minikube service`
 * [Persistent Volumes](https://minikube.sigs.k8s.io/docs/handbook/persistent_volumes/)
 * [Ingress](https://kubernetes.io/docs/tasks/access-application-cluster/ingress-minikube/)
 * [Dashboard](https://minikube.sigs.k8s.io/docs/handbook/dashboard/) - `minikube dashboard`
@@ -55,7 +55,7 @@ See minikube in action [here](https://minikube.sigs.k8s.io/docs/handbook/control
 
 minikube is a Kubernetes [#sig-cluster-lifecycle](https://github.com/kubernetes/community/tree/master/sig-cluster-lifecycle)  project.
 
-* [**#minikube on Kubernetes Slack**](https://kubernetes.slack.com) - Live chat with minikube developers!
+* [**#minikube on Kubernetes Slack**](https://kubernetes.slack.com/messages/minikube) - Live chat with minikube developers!
 * [minikube-users mailing list](https://groups.google.com/g/minikube-users)
 * [minikube-dev mailing list](https://groups.google.com/g/minikube-dev)
 
