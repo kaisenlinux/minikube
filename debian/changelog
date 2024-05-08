@@ -1,3 +1,9 @@
+minikube (1.33.0-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.33.0 release
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Wed, 08 May 2024 13:04:47 +0200
+
 minikube (1.31.1-2kaisen) kaisen-packages; urgency=medium
 
   * Remove armhf as supported architecture

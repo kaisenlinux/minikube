@@ -83,11 +83,15 @@ func (d *Driver) Create() error {
 		ClusterLabel:  oci.ProfileLabelKey + "=" + d.MachineName,
 		NodeLabel:     oci.NodeLabelKey + "=" + d.NodeConfig.MachineName,
 		CPUs:          strconv.Itoa(d.NodeConfig.CPU),
-		Memory:        strconv.Itoa(d.NodeConfig.Memory) + "mb",
+		Memory:        strconv.Itoa(d.NodeConfig.Memory),
 		Envs:          d.NodeConfig.Envs,
 		ExtraArgs:     append([]string{"--expose", fmt.Sprintf("%d", d.NodeConfig.APIServerPort)}, d.NodeConfig.ExtraArgs...),
 		OCIBinary:     d.NodeConfig.OCIBinary,
 		APIServerPort: d.NodeConfig.APIServerPort,
+		GPUs:          d.NodeConfig.GPUs,
+	}
+	if params.Memory != "0" {
+		params.Memory += "mb"
 	}
 
 	networkName := d.NodeConfig.Network
@@ -110,7 +114,7 @@ func (d *Driver) Create() error {
 		ip := gateway.To4()
 		// calculate the container IP based on guessing the machine index
 		index := driver.IndexFromMachineName(d.NodeConfig.MachineName)
-		if int(ip[3])+index > 255 {
+		if int(ip[3])+index > 253 { // reserve last client ip address for multi-control-plane loadbalancer vip address in ha cluster
 			return fmt.Errorf("too many machines to calculate an IP")
 		}
 		ip[3] += byte(index)
@@ -196,7 +200,7 @@ func (d *Driver) Create() error {
 			}
 			klog.Infof("Unable to extract preloaded tarball to volume: %v", err)
 		} else {
-			klog.Infof("duration metric: took %f seconds to extract preloaded images to volume", time.Since(t).Seconds())
+			klog.Infof("duration metric: took %s to extract preloaded images to volume ...", time.Since(t))
 		}
 	}()
 	waitForPreload.Wait()

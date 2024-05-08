@@ -228,8 +228,7 @@ func mustRestartDockerd(name string, runner command.Runner) {
 		// will need to wait for apisever container to come up, this usually takes 5 seconds
 		// verifying apisever using kverify would add code complexity for a rare case.
 		klog.Warningf("waiting to ensure apisever container is up...")
-		startTime := time.Now()
-		if err = waitForAPIServerProcess(runner, startTime, time.Second*30); err != nil {
+		if err = waitForAPIServerProcess(runner, time.Now(), time.Second*30); err != nil {
 			klog.Warningf("apiserver container isn't up, error: %v", err)
 		}
 	}
@@ -270,7 +269,7 @@ For example, you can do all docker operations such as docker build, docker run, 
 
 Note: You need the docker-cli to be installed on your machine.
 docker-cli install instructions: https://minikube.sigs.k8s.io/docs/tutorials/docker_desktop_replacement/#steps`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		var err error
 
 		shl := shell.ForceShell
@@ -414,16 +413,23 @@ docker-cli install instructions: https://minikube.sigs.k8s.io/docs/tutorials/doc
 			}
 			cmd := exec.Command(path, d.GetSSHKeyPath())
 			cmd.Stderr = os.Stderr
-			cmd.Env = append(cmd.Env, fmt.Sprintf("SSH_AUTH_SOCK=%s", co.Config.SSHAuthSock))
-			cmd.Env = append(cmd.Env, fmt.Sprintf("SSH_AGENT_PID=%d", co.Config.SSHAgentPID))
+
+			// TODO: refactor to work with docker, temp fix to resolve regression
+			if cr == constants.Containerd {
+				cmd.Env = append(cmd.Env, fmt.Sprintf("SSH_AUTH_SOCK=%s", co.Config.SSHAuthSock))
+				cmd.Env = append(cmd.Env, fmt.Sprintf("SSH_AGENT_PID=%d", co.Config.SSHAgentPID))
+			}
 			err = cmd.Run()
 			if err != nil {
 				exit.Error(reason.IfSSHClient, "Error with ssh-add", err)
 			}
-		}
 
-		// eventually, run something similar to ssh --append-known
-		appendKnownHelper(nodeName, true)
+			// TODO: refactor to work with docker, temp fix to resolve regression
+			if cr == constants.Containerd {
+				// eventually, run something similar to ssh --append-known
+				appendKnownHelper(nodeName, true)
+			}
+		}
 	},
 }
 

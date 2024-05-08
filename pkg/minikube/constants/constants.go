@@ -34,12 +34,12 @@ var (
 
 const (
 	// DefaultKubernetesVersion is the default Kubernetes version
-	DefaultKubernetesVersion = "v1.27.3"
+	DefaultKubernetesVersion = "v1.30.0"
 	// NewestKubernetesVersion is the newest Kubernetes version to test against
 	// NOTE: You may need to update coreDNS & etcd versions in pkg/minikube/bootstrapper/images/images.go
-	NewestKubernetesVersion = "v1.27.3"
+	NewestKubernetesVersion = "v1.30.0"
 	// OldestKubernetesVersion is the oldest Kubernetes version to test against
-	OldestKubernetesVersion = "v1.16.0"
+	OldestKubernetesVersion = "v1.20.0"
 	// NoKubernetesVersion is the version used when users does NOT want to install kubernetes
 	NoKubernetesVersion = "v0.0.0"
 
@@ -138,6 +138,8 @@ const (
 	TimeFormat = time.RFC822
 	// MaxResources is the value that can be passed into the memory and cpus flags to specify to use maximum resources
 	MaxResources = "max"
+	// NoLimit is the value that can be passed into the memory and cpus flags to specify to not set the resource limit on the container (Docker & Podman only)
+	NoLimit = "no-limit"
 
 	// DefaultCertExpiration is the amount of time in the future a certificate will expire in by default, which is 3 years
 	DefaultCertExpiration = time.Hour * 24 * 365 * 3

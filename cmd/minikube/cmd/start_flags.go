@@ -115,6 +115,7 @@ const (
 	autoUpdate              = "auto-update-drivers"
 	hostOnlyNicType         = "host-only-nic-type"
 	natNicType              = "nat-nic-type"
+	ha                      = "ha"
 	nodes                   = "nodes"
 	preload                 = "preload"
 	deleteOnFailure         = "delete-on-failure"
@@ -141,6 +142,8 @@ const (
 	socketVMnetClientPath   = "socket-vmnet-client-path"
 	socketVMnetPath         = "socket-vmnet-path"
 	staticIP                = "static-ip"
+	gpus                    = "gpus"
+	autoPauseInterval       = "auto-pause-interval"
 )
 
 var (
@@ -158,8 +161,8 @@ func initMinikubeFlags() {
 	startCmd.Flags().Bool(interactive, true, "Allow user prompts for more information")
 	startCmd.Flags().Bool(dryRun, false, "dry-run mode. Validates configuration, but does not mutate system state")
 
-	startCmd.Flags().String(cpus, "2", fmt.Sprintf("Number of CPUs allocated to Kubernetes. Use %q to use the maximum number of CPUs.", constants.MaxResources))
-	startCmd.Flags().String(memory, "", fmt.Sprintf("Amount of RAM to allocate to Kubernetes (format: <number>[<unit>], where unit = b, k, m or g). Use %q to use the maximum amount of memory.", constants.MaxResources))
+	startCmd.Flags().String(cpus, "2", fmt.Sprintf("Number of CPUs allocated to Kubernetes. Use %q to use the maximum number of CPUs. Use %q to not specify a limit (Docker/Podman only)", constants.MaxResources, constants.NoLimit))
+	startCmd.Flags().String(memory, "", fmt.Sprintf("Amount of RAM to allocate to Kubernetes (format: <number>[<unit>], where unit = b, k, m or g). Use %q to use the maximum amount of memory. Use %q to not specify a limit (Docker/Podman only)", constants.MaxResources, constants.NoLimit))
 	startCmd.Flags().String(humanReadableDiskSize, defaultDiskSize, "Disk size allocated to the minikube VM (format: <number>[<unit>], where unit = b, k, m or g).")
 	startCmd.Flags().Bool(downloadOnly, false, "If true, only download and cache files for later use - don't install or start anything.")
 	startCmd.Flags().Bool(cacheImages, true, "If true, cache docker images for the current bootstrapper and load them into the machine. Always false with --driver=none.")
@@ -188,20 +191,23 @@ func initMinikubeFlags() {
 	startCmd.Flags().Bool(nativeSSH, true, "Use native Golang SSH client (default true). Set to 'false' to use the command line 'ssh' command when accessing the docker machine. Useful for the machine drivers when they will not start with 'Waiting for SSH'.")
 	startCmd.Flags().Bool(autoUpdate, true, "If set, automatically updates drivers to the latest version. Defaults to true.")
 	startCmd.Flags().Bool(installAddons, true, "If set, install addons. Defaults to true.")
-	startCmd.Flags().IntP(nodes, "n", 1, "The number of nodes to spin up. Defaults to 1.")
+	startCmd.Flags().Bool(ha, false, "Create Highly Available Multi-Control Plane Cluster with a minimum of three control-plane nodes that will also be marked for work.")
+	startCmd.Flags().IntP(nodes, "n", 1, "The total number of nodes to spin up. Defaults to 1.")
 	startCmd.Flags().Bool(preload, true, "If set, download tarball of preloaded images if available to improve start time. Defaults to true.")
 	startCmd.Flags().Bool(noKubernetes, false, "If set, minikube VM/container will start without starting or configuring Kubernetes. (only works on new clusters)")
 	startCmd.Flags().Bool(deleteOnFailure, false, "If set, delete the current cluster if start fails and try again. Defaults to false.")
 	startCmd.Flags().Bool(forceSystemd, false, "If set, force the container runtime to use systemd as cgroup manager. Defaults to false.")
-	startCmd.Flags().StringP(network, "", "", "network to run minikube with. Now it is used by docker/podman and KVM drivers. If left empty, minikube will create a new network.")
+	startCmd.Flags().String(network, "", "network to run minikube with. Now it is used by docker/podman and KVM drivers. If left empty, minikube will create a new network.")
 	startCmd.Flags().StringVarP(&outputFormat, "output", "o", "text", "Format to print stdout in. Options include: [text,json]")
-	startCmd.Flags().StringP(trace, "", "", "Send trace events. Options include: [gcp]")
+	startCmd.Flags().String(trace, "", "Send trace events. Options include: [gcp]")
 	startCmd.Flags().Int(extraDisks, 0, "Number of extra disks created and attached to the minikube VM (currently only implemented for hyperkit, kvm2, and qemu2 drivers)")
 	startCmd.Flags().Duration(certExpiration, constants.DefaultCertExpiration, "Duration until minikube certificate expiration, defaults to three years (26280h).")
 	startCmd.Flags().String(binaryMirror, "", "Location to fetch kubectl, kubelet, & kubeadm binaries from.")
 	startCmd.Flags().Bool(disableOptimizations, false, "If set, disables optimizations that are set for local Kubernetes. Including decreasing CoreDNS replicas from 2 to 1. Defaults to false.")
 	startCmd.Flags().Bool(disableMetrics, false, "If set, disables metrics reporting (CPU and memory usage), this can improve CPU usage. Defaults to false.")
 	startCmd.Flags().String(staticIP, "", "Set a static IP for the minikube cluster, the IP must be: private, IPv4, and the last octet must be between 2 and 254, for example 192.168.200.200 (Docker and Podman drivers only)")
+	startCmd.Flags().StringP(gpus, "g", "", "Allow pods to use your NVIDIA GPUs. Options include: [all,nvidia] (Docker driver with Docker container-runtime only)")
+	startCmd.Flags().Duration(autoPauseInterval, time.Minute*1, "Duration of inactivity before the minikube VM is paused (default 1m0s)")
 }
 
 // initKubernetesFlags inits the commandline flags for Kubernetes related options
@@ -297,8 +303,7 @@ func generateClusterConfig(cmd *cobra.Command, existing *config.ClusterConfig, k
 		cc = updateExistingConfigFromFlags(cmd, existing)
 
 		// identify appropriate cni then configure cruntime accordingly
-		_, err := cni.New(&cc)
-		if err != nil {
+		if _, err := cni.New(&cc); err != nil {
 			return cc, config.Node{}, errors.Wrap(err, "cni")
 		}
 	} else {
@@ -316,8 +321,6 @@ func generateClusterConfig(cmd *cobra.Command, existing *config.ClusterConfig, k
 		}
 	}
 
-	klog.Infof("config:\n%+v", cc)
-
 	r, err := cruntime.New(cruntime.Config{Type: cc.KubernetesConfig.ContainerRuntime})
 	if err != nil {
 		return cc, config.Node{}, errors.Wrap(err, "new runtime manager")
@@ -329,10 +332,16 @@ func generateClusterConfig(cmd *cobra.Command, existing *config.ClusterConfig, k
 		proxy.SetDockerEnv()
 	}
 
-	return createNode(cc, existing)
+	return configureNodes(cc, existing)
 }
 
 func getCPUCount(drvName string) int {
+	if viper.GetString(cpus) == constants.NoLimit {
+		if driver.IsKIC(drvName) {
+			return 0
+		}
+		exit.Message(reason.Usage, "The '{{.name}}' driver does not support --cpus=no-limit", out.V{"name": drvName})
+	}
 	if viper.GetString(cpus) != constants.MaxResources {
 		return viper.GetInt(cpus)
 	}
@@ -366,7 +375,9 @@ func getMemorySize(cmd *cobra.Command, drvName string) int {
 	if cmd.Flags().Changed(memory) || viper.IsSet(memory) {
 		memString := viper.GetString(memory)
 		var err error
-		if memString == constants.MaxResources {
+		if memString == constants.NoLimit && driver.IsKIC(drvName) {
+			mem = 0
+		} else if memString == constants.MaxResources {
 			mem = noLimitMemory(sysLimit, containerLimit, drvName)
 		} else {
 			mem, err = pkgutil.CalculateSizeInMB(memString)
@@ -506,6 +517,8 @@ func generateNewConfigFromFlags(cmd *cobra.Command, k8sVersion string, rtime str
 		out.WarningT("--network flag is only valid with the docker/podman, KVM and Qemu drivers, it will be ignored")
 	}
 
+	validateHANodeCount(cmd)
+
 	checkNumaCount(k8sVersion)
 
 	checkExtraDiskOptions(cmd, drvName)
@@ -540,6 +553,7 @@ func generateNewConfigFromFlags(cmd *cobra.Command, k8sVersion string, rtime str
 		KVMGPU:                  viper.GetBool(kvmGPU),
 		KVMHidden:               viper.GetBool(kvmHidden),
 		KVMNUMACount:            viper.GetInt(kvmNUMACount),
+		APIServerPort:           viper.GetInt(apiServerPort),
 		DisableDriverMounts:     viper.GetBool(disableDriverMounts),
 		UUID:                    viper.GetString(uuid),
 		NoVTXCheck:              viper.GetBool(noVTXCheck),
@@ -589,9 +603,10 @@ func generateNewConfigFromFlags(cmd *cobra.Command, k8sVersion string, rtime str
 			ExtraOptions:           getExtraOptions(),
 			ShouldLoadCachedImages: viper.GetBool(cacheImages),
 			CNI:                    getCNIConfig(cmd),
-			NodePort:               viper.GetInt(apiServerPort),
 		},
-		MultiNodeRequested: viper.GetInt(nodes) > 1,
+		MultiNodeRequested: viper.GetInt(nodes) > 1 || viper.GetBool(ha),
+		GPUs:               viper.GetString(gpus),
+		AutoPauseInterval:  viper.GetDuration(autoPauseInterval),
 	}
 	cc.VerifyComponents = interpretWaitFlag(*cmd)
 	if viper.GetBool(createMount) && driver.IsKIC(drvName) {
@@ -605,9 +620,6 @@ func generateNewConfigFromFlags(cmd *cobra.Command, k8sVersion string, rtime str
 		}
 		if si.Rootless {
 			out.Styled(style.Notice, "Using rootless {{.driver_name}} driver", out.V{"driver_name": driver.FullName(drvName)})
-			if cc.KubernetesConfig.ContainerRuntime == constants.Docker {
-				exit.Message(reason.Usage, "--container-runtime must be set to \"containerd\" or \"cri-o\" for rootless")
-			}
 			// KubeletInUserNamespace feature gate is essential for rootless driver.
 			// See https://kubernetes.io/docs/tasks/administer-cluster/kubelet-in-userns/
 			cc.KubernetesConfig.FeatureGates = addFeatureGate(cc.KubernetesConfig.FeatureGates, "KubeletInUserNamespace=true")
@@ -657,6 +669,23 @@ func addFeatureGate(featureGates, s string) string {
 	return strings.Join(split, ",")
 }
 
+// validateHANodeCount ensures correct total number of nodes in ha (multi-control plane) cluster.
+func validateHANodeCount(cmd *cobra.Command) {
+	if !viper.GetBool(ha) {
+		return
+	}
+
+	// set total number of nodes in ha (multi-control plane) cluster to 3, if not otherwise defined by user
+	if !cmd.Flags().Changed(nodes) {
+		viper.Set(nodes, 3)
+	}
+
+	// respect user preference, if correct
+	if cmd.Flags().Changed(nodes) && viper.GetInt(nodes) < 3 {
+		exit.Message(reason.Usage, "HA (multi-control plane) clusters require 3 or more control-plane nodes")
+	}
+}
+
 func checkNumaCount(k8sVersion string) {
 	if viper.GetInt(kvmNUMACount) < 1 || viper.GetInt(kvmNUMACount) > 8 {
 		exit.Message(reason.Usage, "--kvm-numa-count range is 1-8")
@@ -679,11 +708,6 @@ func upgradeExistingConfig(cmd *cobra.Command, cc *config.ClusterConfig) {
 		return
 	}
 
-	if cc.VMDriver != "" && cc.Driver == "" {
-		klog.Infof("config upgrade: Driver=%s", cc.VMDriver)
-		cc.Driver = cc.VMDriver
-	}
-
 	if cc.Name == "" {
 		klog.Infof("config upgrade: Name=%s", ClusterFlagValue())
 		cc.Name = ClusterFlagValue()
@@ -695,38 +719,42 @@ func upgradeExistingConfig(cmd *cobra.Command, cc *config.ClusterConfig) {
 		klog.Infof("config upgrade: KicBaseImage=%s", cc.KicBaseImage)
 	}
 
-	if cc.CPUs == 0 {
+	if cc.CPUs == 0 && !driver.IsKIC(cc.Driver) {
 		klog.Info("Existing config file was missing cpu. (could be an old minikube config), will use the default value")
 		cc.CPUs = viper.GetInt(cpus)
 	}
 
-	if cc.Memory == 0 {
+	if cc.Memory == 0 && !driver.IsKIC(cc.Driver) {
 		klog.Info("Existing config file was missing memory. (could be an old minikube config), will use the default value")
 		memInMB := getMemorySize(cmd, cc.Driver)
 		cc.Memory = memInMB
 	}
 
-	// pre minikube 1.9.2 cc.KubernetesConfig.NodePort was not populated.
-	// in minikube config there were two fields for api server port.
-	// one in cc.KubernetesConfig.NodePort and one in cc.Nodes.Port
-	// this makes sure api server port not be set as 0!
-	if cc.KubernetesConfig.NodePort == 0 {
-		cc.KubernetesConfig.NodePort = viper.GetInt(apiServerPort)
-	}
-
 	if cc.CertExpiration == 0 {
 		cc.CertExpiration = constants.DefaultCertExpiration
 	}
-
 }
 
 // updateExistingConfigFromFlags will update the existing config from the flags - used on a second start
-// skipping updating existing docker env , docker opt, InsecureRegistry, registryMirror, extra-config, apiserver-ips
+// skipping updating existing docker env, docker opt, InsecureRegistry, registryMirror, extra-config, apiserver-ips
 func updateExistingConfigFromFlags(cmd *cobra.Command, existing *config.ClusterConfig) config.ClusterConfig { //nolint to suppress cyclomatic complexity 45 of func `updateExistingConfigFromFlags` is high (> 30)
-
 	validateFlags(cmd, existing.Driver)
 
 	cc := *existing
+
+	if cmd.Flags().Changed(nodes) {
+		out.WarningT("You cannot change the number of nodes for an existing minikube cluster. Please use 'minikube node add' to add nodes to an existing cluster.")
+	}
+
+	if cmd.Flags().Changed(ha) {
+		out.WarningT("Changing the HA (multi-control plane) mode of an existing minikube cluster is not currently supported. Please first delete the cluster and use 'minikube start --ha' to create new one.")
+	}
+
+	if cmd.Flags().Changed(apiServerPort) && config.IsHA(*existing) {
+		out.WarningT("Changing the API server port of an existing minikube HA (multi-control plane) cluster is not currently supported. Please first delete the cluster.")
+	} else {
+		updateIntFromFlag(cmd, &cc.APIServerPort, apiServerPort)
+	}
 
 	if cmd.Flags().Changed(memory) && getMemorySize(cmd, cc.Driver) != cc.Memory {
 		out.WarningT("You cannot change the memory size for an existing minikube cluster. Please first delete the cluster.")
@@ -792,7 +820,6 @@ func updateExistingConfigFromFlags(cmd *cobra.Command, existing *config.ClusterC
 	updateStringFromFlag(cmd, &cc.KubernetesConfig.NetworkPlugin, networkPlugin)
 	updateStringFromFlag(cmd, &cc.KubernetesConfig.ServiceCIDR, serviceCIDR)
 	updateBoolFromFlag(cmd, &cc.KubernetesConfig.ShouldLoadCachedImages, cacheImages)
-	updateIntFromFlag(cmd, &cc.KubernetesConfig.NodePort, apiServerPort)
 	updateDurationFromFlag(cmd, &cc.CertExpiration, certExpiration)
 	updateBoolFromFlag(cmd, &cc.Mount, createMount)
 	updateStringFromFlag(cmd, &cc.MountString, mountString)
@@ -809,6 +836,7 @@ func updateExistingConfigFromFlags(cmd *cobra.Command, existing *config.ClusterC
 	updateStringFromFlag(cmd, &cc.CustomQemuFirmwarePath, qemuFirmwarePath)
 	updateStringFromFlag(cmd, &cc.SocketVMnetClientPath, socketVMnetClientPath)
 	updateStringFromFlag(cmd, &cc.SocketVMnetPath, socketVMnetPath)
+	updateDurationFromFlag(cmd, &cc.AutoPauseInterval, autoPauseInterval)
 
 	if cmd.Flags().Changed(kubernetesVersion) {
 		kubeVer, err := getKubernetesVersion(existing)

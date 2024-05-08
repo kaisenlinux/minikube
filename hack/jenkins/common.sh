@@ -282,6 +282,10 @@ function cleanup_procs() {
   fi
 
   if [[ "${DRIVER}" == "hyperkit" ]]; then
+    # even though Internet Sharing is disabled in the UI settings, it's still preventing HyperKit from starting
+    # the error is "Could not create vmnet interface, permission denied or no entitlement?"
+    # I've discovered that if you kill the "InternetSharing" process that this resolves the error and HyperKit starts normally
+    sudo pkill InternetSharing
     if [[ -e out/docker-machine-driver-hyperkit ]]; then
       sudo chown root:wheel out/docker-machine-driver-hyperkit || true
       sudo chmod u+s out/docker-machine-driver-hyperkit || true
@@ -341,7 +345,7 @@ if [ "$(uname)" != "Darwin" ]; then
   docker build -t gcr.io/k8s-minikube/gvisor-addon:2 -f testdata/gvisor-addon-Dockerfile ./testdata
 fi
 
-readonly LOAD=$(uptime | egrep -o "load average.*: [0-9]+" | cut -d" " -f3)
+readonly LOAD=$(uptime | grep -E -o "load average.*: [0-9]+" | cut -d" " -f3)
 if [[ "${LOAD}" -gt 2 ]]; then
   echo ""
   echo "********************** LOAD WARNING ********************************"
@@ -428,10 +432,7 @@ if ! type "jq" > /dev/null; then
 fi
 
 echo ">> Installing gopogh"
-go install github.com/medyagh/gopogh/cmd/gopogh@v0.17.0
-# temporary: remove the old install of gopogh as it's taking priority over our current install, preventing updating
-sudo rm -f /usr/local/bin/gopogh
-
+./installers/check_install_gopogh.sh
 
 echo ">> Running gopogh"
 if test -f "${HTML_OUT}"; then
@@ -440,7 +441,13 @@ fi
 
 touch "${HTML_OUT}"
 touch "${SUMMARY_OUT}"
-gopogh_status=$(gopogh -in "${JSON_OUT}" -out_html "${HTML_OUT}" -out_summary "${SUMMARY_OUT}" -name "${JOB_NAME}" -pr "${MINIKUBE_LOCATION}" -repo github.com/kubernetes/minikube/  -details "${COMMIT}:$(date +%Y-%m-%d):${ROOT_JOB_ID}") || true
+if [ "$EXTERNAL" != "yes" ] && [ "$MINIKUBE_LOCATION" = "master" ]
+then
+	gopogh -in "${JSON_OUT}" -out_html "${HTML_OUT}" -out_summary "${SUMMARY_OUT}" -name "${JOB_NAME}" -pr "${MINIKUBE_LOCATION}" -repo github.com/kubernetes/minikube/  -details "${COMMIT}:$(date +%Y-%m-%d):${ROOT_JOB_ID}" -db_backend "${GOPOGH_DB_BACKEND}" -db_host "${GOPOGH_DB_HOST}" -db_path "${GOPOGH_DB_PATH}" -use_cloudsql -use_iam_auth || true
+else
+	gopogh -in "${JSON_OUT}" -out_html "${HTML_OUT}" -out_summary "${SUMMARY_OUT}" -name "${JOB_NAME}" -pr "${MINIKUBE_LOCATION}" -repo github.com/kubernetes/minikube/  -details "${COMMIT}:$(date +%Y-%m-%d):${ROOT_JOB_ID}" || true
+fi
+gopogh_status=$(cat "${SUMMARY_OUT}")
 fail_num=$(echo $gopogh_status | jq '.NumberOfFail')
 test_num=$(echo $gopogh_status | jq '.NumberOfTests')
 pessimistic_status="${fail_num} / ${test_num} failures"
@@ -479,7 +486,7 @@ else
   cp "${TEST_OUT}" "$REPORTS_PATH/out.txt"
   cp "${JSON_OUT}" "$REPORTS_PATH/out.json"
   cp "${HTML_OUT}" "$REPORTS_PATH/out.html"
-  cp "${SUMMARY_OUT}" "$REPORTS_PATH/summary.txt"
+  cp "${SUMMARY_OUT}" "$REPORTS_PATH/summary.json"
 fi
 
 echo ">> Cleaning up after ourselves ..."

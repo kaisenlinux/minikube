@@ -94,7 +94,7 @@ var hostAndDirsDeleter = func(api libmachine.API, cc *config.ClusterConfig, prof
 	if err := killMountProcess(); err != nil {
 		out.FailureT("Failed to kill mount process: {{.error}}", out.V{"error": err})
 	}
-	if err := sshagent.Stop(profileName); err != nil {
+	if err := sshagent.Stop(profileName); err != nil && !config.IsNotExist(err) {
 		out.FailureT("Failed to stop ssh-agent process: {{.error}}", out.V{"error": err})
 	}
 
@@ -407,7 +407,7 @@ func unpauseIfNeeded(profile *config.Profile) error {
 
 	cr, err := cruntime.New(cruntime.Config{Type: crName, Runner: r})
 	if err != nil {
-		exit.Error(reason.InternalNewRuntime, "Failed to create runtime", err)
+		return err
 	}
 
 	paused, err := cluster.CheckIfPaused(cr, nil)
@@ -541,13 +541,15 @@ func handleSingleDeletionError(err error) {
 	if ok {
 		switch deletionError.Errtype {
 		case Fatal:
-			out.FatalT(deletionError.Error())
+			out.ErrT(style.Fatal, "Failed to delete profile(s): {{.error}}", out.V{"error": deletionError.Error()})
+			os.Exit(reason.ExGuestError)
 		case MissingProfile:
 			out.ErrT(style.Sad, deletionError.Error())
 		case MissingCluster:
 			out.ErrT(style.Meh, deletionError.Error())
 		default:
-			out.FatalT(deletionError.Error())
+			out.ErrT(style.Fatal, "Unable to delete profile(s): {{.error}}", out.V{"error": deletionError.Error()})
+			os.Exit(reason.ExGuestError)
 		}
 	} else {
 		exit.Error(reason.GuestDeletion, "Could not process error from failed deletion", err)
