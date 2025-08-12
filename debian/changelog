@@ -1,3 +1,10 @@
+minikube (1.36.0-1kaisen) kaisen-packages; urgency=medium
+
+  * Import the 1.36.0 release
+  * Bump the golang-go version required to build
+
+ -- Kevin Chevreuil - Kaisen <kaisen@kaisenlinux.org>  Sat, 09 Aug 2025 19:59:53 +0200
+
 minikube (1.34.0-1kaisen) kaisen-packages; urgency=medium
 
   * Import the 1.34.0 release

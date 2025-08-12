@@ -419,7 +419,7 @@ func configureRuntimes(runner cruntime.CommandRunner, cc config.ClusterConfig, k
 		InsecureRegistry:  cc.InsecureRegistry,
 	}
 	if cc.GPUs != "" {
-		co.GPUs = true
+		co.GPUs = cc.GPUs
 	}
 	cr, err := cruntime.New(co)
 	if err != nil {
@@ -768,7 +768,7 @@ func validateNetwork(h *host.Host, r command.Runner, imageRepository string) (st
 			k = strings.ToUpper(k) // let's get the key right away to mask password from output
 			// If http(s)_proxy contains password, let's not splatter on the screen
 			if k == "HTTP_PROXY" || k == "HTTPS_PROXY" {
-				v = util.MaskProxyPassword(v)
+				v = proxy.MaskProxyPassword(v)
 			}
 			out.Infof("{{.key}}={{.value}}", out.V{"key": k, "value": v})
 			ipExcluded := proxy.IsIPExcluded(ip) // Skip warning if minikube ip is already in NO_PROXY

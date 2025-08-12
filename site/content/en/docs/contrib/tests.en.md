@@ -24,14 +24,14 @@ tests addons that require no special environment in parallel
 #### validateIngressAddon
 tests the ingress addon by deploying a default nginx pod
 
+#### validateRegistryCredsAddon
+tests the registry-creds addon by trying to load its configs
+
 #### validateRegistryAddon
 tests the registry addon
 
 #### validateMetricsServerAddon
 tests the metrics server addon by making sure "kubectl top pods" returns a sensible result
-
-#### validateHelmTillerAddon
-tests the helm tiller addon by running "helm version" inside the cluster
 
 #### validateOlmAddon
 tests the OLM addon
@@ -67,6 +67,9 @@ tests disabling an addon on a non-existing cluster
 
 #### validateNvidiaDevicePlugin
 tests the nvidia-device-plugin addon by ensuring the pod comes up and the addon disables
+
+#### validateAmdGpuDevicePlugin
+tests the amd-gpu-device-plugin addon by ensuring the pod comes up and the addon disables
 
 #### validateYakdAddon
 
@@ -113,6 +116,10 @@ asserts that there are no unexpected errors displayed in minikube command output
 
 ## TestFunctional
 are functionality tests which can safely share a profile in parallel
+
+## TestFunctionalNewestKubernetes
+are functionality run functional tests using
+NewestKubernetesVersion
 
 #### validateNodeLabels
 checks if minikube cluster is created with correct kubernetes's node label
